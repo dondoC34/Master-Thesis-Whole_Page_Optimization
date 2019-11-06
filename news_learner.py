@@ -1,5 +1,5 @@
 import numpy as np
-from news import *
+from ads_news import *
 from synthetic_user import *
 from PIL import Image
 import scipy.stats as stat
