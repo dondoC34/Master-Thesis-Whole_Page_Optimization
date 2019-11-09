@@ -4,9 +4,8 @@ from synthetic_user import *
 from PIL import Image
 import scipy.stats as stat
 import scipy.special as sp
-import matplotlib.pyplot as plt
 import seaborn as sns
-
+from weighted_beta_distribution import *
 
 
 class NewsLearner:
@@ -30,6 +29,7 @@ class NewsLearner:
         self.category_per_slot_reward_count = np.zeros([len(self.categories), self.layout_slots])
         self.quality_parameters = np.ones([len(self.categories), 2])  # TS parameters for quality estimate
         self.promenance_parameters = np.ones([self.layout_slots, 2])  # TS parameters for slot prom. estimate
+        self.weighted_beta = WeightedBetaDistribution(self.categories, self.layout_slots, self.real_slot_promenances)
 
     # Returns a TS-sample for category k, either with standard TS approach or PBM approach
     def sample_quality(self, category, approach="standard"):
@@ -40,29 +40,7 @@ class NewsLearner:
             return np.random.beta(a=self.quality_parameters[index][0], b=self.quality_parameters[index][1])
         elif approach == "position_based_model":
 
-            result = -1
-            category_index = self.categories.index(category)
-            proposal_weight = self.last_proposal_weights[category_index]
-            count = 1
-
-            while result == -1:
-
-                if count % 30 == 0:
-                    proposal_weight /= 10
-
-                x_proposal = self.sample_from_alternative_proposal_distribution()
-                y_proposal = self.alternative_proposal_distribution_pdf(weight=30 * proposal_weight)
-                y_sample = np.random.uniform(0, y_proposal)
-                y_target = self.target_distribution_pdf(category=category, x_value=x_proposal)
-                if y_target > y_proposal:
-                    proposal_weight = y_target / 30 + (y_target - y_proposal) / 30
-                elif y_sample < y_target:
-                    result = x_proposal
-                    self.last_proposal_weights[category_index] = proposal_weight
-
-                count += 1
-
-            return result
+            return self.weighted_beta.sample(category=category)
 
     # Returns a TS- sample or a real value for the slot promenance of the slot k (k=-1 for all the slots)
     def sample_promenance(self, slot=-1, use_real_value=True):
@@ -97,7 +75,7 @@ class NewsLearner:
                 category_index = self.categories.index(content.news_category)
                 self.quality_parameters[category_index][0] += 1
                 if len(slot_nr) > 0:
-                    self.category_per_slot_reward_count[category_index][slot_nr[i]] += 1
+                    self.weighted_beta.news_click(content, slot_nr[i])
                     i += 1
         else:
             for content in news:
@@ -127,7 +105,7 @@ class NewsLearner:
             assigning_news = tmp_news_pool.pop(0)
             result_news_allocation[int(target_slot_index)] = assigning_news
             category_index = self.categories.index(assigning_news.news_category)
-            self.category_per_slot_assignment_count[category_index][target_slot_index] += 1
+            self.weighted_beta.news_allocation(assigning_news, target_slot_index)
             slot_promenances[target_slot_index] = -1
 
         if verbose:
@@ -150,49 +128,6 @@ class NewsLearner:
         for news in news_observed:
             self.last_news_observed.append(news.news_id)
 
-    # Gets a sample from the proposal distribution (not ideal distribution for our purpose)
-    def sample_from_proposal_distribution(self, category):
-
-        category_index = self.categories.index(category)
-        target_slot = np.argmax(self.category_per_slot_assignment_count[category_index])
-        return np.random.beta(a=1 + self.category_per_slot_reward_count[category_index][target_slot],
-                              b=1 + self.category_per_slot_assignment_count[category_index][target_slot] -
-                                    self.category_per_slot_reward_count[category_index][target_slot])
-
-    # Return a value from the probability density function of the proposal distribution corresponding to a category
-    # and an x_value
-    def proposal_distribution_pdf(self, category, x_value):
-
-        category_index = self.categories.index(category)
-        target_slot = np.argmax(self.category_per_slot_assignment_count[category_index])
-        return 1 / self.real_slot_promenances[int(target_slot)] * \
-               stat.beta(a=1 + self.category_per_slot_reward_count[category_index][target_slot],
-                         b=1 + self.category_per_slot_assignment_count[category_index][target_slot] -
-                           self.category_per_slot_reward_count[category_index][target_slot]).pdf(x_value)
-
-    # Return a value from the probability density function of target distribution corresponding to a category and an
-    # x_value
-    def target_distribution_pdf(self, category, x_value):
-
-        category_index = self.categories.index(category)
-        result = 1
-        for i in range(self.layout_slots):
-            alpha = self.category_per_slot_reward_count[category_index][i]
-            beta = self.category_per_slot_assignment_count[category_index][i] - \
-                   self.category_per_slot_reward_count[category_index][i]
-
-            result *= x_value**alpha * (1 - self.real_slot_promenances[i] * x_value)**beta
-
-        return result
-
-    # Sample a value from an alternative proposal defined by me
-    def sample_from_alternative_proposal_distribution(self):
-        return np.random.uniform(0, 1)
-
-    # Return a value from the probability density funtion of an alternative proposal dist, scaled by a weight
-    def alternative_proposal_distribution_pdf(self, weight=1):
-        return 1 * weight
-
     # When a user arrives, finds an allocation for that user by exploiting the knowledge accumulated so far, then
     # simulates the users interactions with the proposed page and collects the information
     def user_arrival(self, user):
@@ -211,44 +146,6 @@ class NewsLearner:
 
         self.multiple_arms_avg_reward.append(np.mean(arm_rewards))
         self.click_per_page.append(page_clicks)
-
-    # Plots the proposal distribution of a given category
-    def print_proposal_distributin(self, category):
-        category_index = self.categories.index(category)
-        target_slot = np.argmax(self.category_per_slot_assignment_count[category_index])
-        result = []
-        i = 0
-        while i <= 1:
-            result.append(1 / self.real_slot_promenances[int(target_slot)] * \
-               stat.beta(a=1 + self.category_per_slot_reward_count[category_index][target_slot],
-                         b=1 + self.category_per_slot_assignment_count[category_index][target_slot] -
-                           self.category_per_slot_reward_count[category_index][target_slot]).pdf(i))
-            i += 0.001
-        plt.plot(result)
-        plt.show()
-
-    # Plots the target distribution of a given category
-    def print_target_distribution(self, category):
-
-        category_index = self.categories.index(category)
-        result = 1
-        result_to_plot = []
-        x_value = 0
-
-        while x_value <= 1.001:
-            for i in range(self.layout_slots):
-                alpha = self.category_per_slot_reward_count[category_index][i]
-                beta = self.category_per_slot_assignment_count[category_index][i] - \
-                       self.category_per_slot_reward_count[category_index][i]
-
-                result *= x_value ** alpha * (1 - self.real_slot_promenances[i] * x_value) ** beta
-            result_to_plot.append(result)
-            result = 1
-            x_value += 0.001
-
-        plt.title(category)
-        plt.plot(result_to_plot)
-        plt.show()
 
 
 if __name__ == "__main__":
@@ -279,7 +176,7 @@ if __name__ == "__main__":
     click_result = []
 
     # Then we perform 100 experiments and use the collected data to plot the regrets and distributions
-    while exp < 300:
+    while exp < 100:
         print("exp " + str(exp))
         a = NewsLearner(categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"], layout_slots=5,
                         real_slot_promenances=[0.7, 0.8, 0.3, 0.5, 0.3])
@@ -290,9 +187,11 @@ if __name__ == "__main__":
         result.append(a.multiple_arms_avg_reward)
         click_result.append(a.click_per_page)
         exp += 1
-        if exp == 299:
-            a.print_target_distribution("politic")
-            a.print_target_distribution("tech")
+        if exp == 99:
+            a.weighted_beta.plot_distribution("politic")
+            a.weighted_beta.plot_distribution("tech")
+            print(a.weighted_beta.category_per_slot_reward_count)
+            print(a.weighted_beta.category_per_slot_assignment_count)
 
     plt.plot(np.mean(result, axis=0))
     plt.title("Reward - " + str(u.user_quality_measure))
@@ -303,4 +202,5 @@ if __name__ == "__main__":
     plt.title("Page Clicks - " + str(u.user_quality_measure))
     plt.plot(np.mean(click_result, axis=0))
     plt.show()
+
 
