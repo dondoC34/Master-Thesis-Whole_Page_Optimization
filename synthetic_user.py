@@ -8,6 +8,7 @@ categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
 class SyntheticUser:
     def __init__(self, user_id, genre, age, attention_bias_category):
         self.user_id = user_id
+        self.last_news_clicked = []
         self.genre = genre
         self.categories = categories
         self.user_quality_measure = []
@@ -50,11 +51,23 @@ class SyntheticUser:
     def assign_learner_with_data(self, data_matrix):
         pass
 
-    # Returns the reward obtained by showing the news "news" to the user
-    def click_news(self, news):
+    # Returns the reward obtained by showing the news "news" to the user keeping into account the number of times
+    # the user already clicked the news
+    def click_news(self, news, interest_decay=False):
         category_index = self.categories.index(news.news_category)
-        return np.random.binomial(1, self.user_quality_measure[category_index]), self.user_quality_measure[category_index]
-                                                
+
+        if interest_decay:
+            click = np.random.binomial(1, np.exp(- self.last_news_clicked.count(news)) *
+                                       self.user_quality_measure[category_index])
+        else:
+            click = np.random.binomial(1, self.user_quality_measure[category_index])
+
+        if (click == 1) and interest_decay:
+            self.last_news_clicked.append(news)
+
+        return click, self.user_quality_measure[category_index]
+
+
 # Given a file containing k users, creates a list with k user objects
 def read_users_from_file(filename):
     result = []

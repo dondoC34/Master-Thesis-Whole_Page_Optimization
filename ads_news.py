@@ -8,6 +8,8 @@ class News:
         self.news_category = news_name.split("-")[0]
         self.sampled_quality = 0
         self.image_path = "News-AdsApp - Copia/" + news_name + ".gif"
+        self.slot_promenance_cumsum = 0
+        self.click_sum = 0
 
     def set_sampled_quality(self, value):
         self.sampled_quality = value

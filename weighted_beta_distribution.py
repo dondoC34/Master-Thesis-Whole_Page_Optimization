@@ -86,7 +86,8 @@ class WeightedBetaDistribution:
             x_value += 0.001
 
         plt.plot(result_to_plot)
-        plt.xticks([0, 200, 400, 600, 800, 1000], ["0", "0.2", "0.4", "0.6", "0.8", "1"])
+        plt.xticks([0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+                   ["0", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1"])
         plt.xlabel("X")
         plt.ylabel("Weighted Beta Pdf")
         plt.title(category + " Estimated Quality")
