@@ -33,9 +33,9 @@ class NewsLearner:
         self.weighted_betas_matrix = []
         self.news_row_pivots = news_row_pivot
         self.news_column_pivots = news_column_pivot
-        for _ in range(3):
+        for _ in range(len(news_row_pivot) + 1):
             row = []
-            for _ in range(4):
+            for _ in range(len(news_column_pivot) + 1):
                 row.append(WeightedBetaDistribution(self.categories,
                                                     self.layout_slots,
                                                     self.real_slot_promenances))
@@ -96,7 +96,7 @@ class NewsLearner:
                             i = 0
                             while content[0].click_sum > self.news_row_pivots[i]:
                                 i += 1
-                            content[1] += i + 1
+                            content[1] = i + 1
                         else:
                             content[1] = len(self.news_row_pivots)
                         content[2] = content[3]
@@ -132,7 +132,6 @@ class NewsLearner:
             target_slot_index = np.argmax(slot_promenances)
             assigning_news = tmp_news_pool.pop(0)
             result_news_allocation[int(target_slot_index)] = assigning_news
-            category_index = self.categories.index(assigning_news[0].news_category)
             if interest_decay:
                 self.weighted_betas_matrix[assigning_news[1]][assigning_news[2]].news_allocation(assigning_news[0],
                                                                                                  target_slot_index)
@@ -142,7 +141,7 @@ class NewsLearner:
                     i = 0
                     while assigning_news[0].slot_promenance_cumsum > self.news_column_pivots[i]:
                         i += 1
-                    assigning_news[3] += i + 1
+                    assigning_news[3] = i + 1
                 else:
                     assigning_news[3] = len(self.news_column_pivots)
             else:
@@ -210,31 +209,37 @@ if __name__ == "__main__":
                                             "tech-4", "tech-10", "tech-14", "tech-20"]:
                 news_pool.__delitem__(-1)
 
-    # We create a user and set their quality metrics that we want to estimate
-    u = SyntheticUser(23, "M", 27, "C")  # A male 27 years old user, that is transparent to slot promenances
-    u.user_quality_measure = [0.2, 0.3, 0.7, 0.2, 0.2, 0.4]
-
     exp = 0
     result = []
     click_result = []
 
     # Then we perform 100 experiments and use the collected data to plot the regrets and distributions
-    while exp < 100:
+    while exp < 10:
         print("exp " + str(exp))
+        # We create a user and set their quality metrics that we want to estimate
+        u = SyntheticUser(23, "M", 27, "C")  # A male 27 years old user, that is transparent to slot promenances
+        u.user_quality_measure = [0.2, 0.3, 0.7, 0.2, 0.2, 0.4]
         a = NewsLearner(categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"], layout_slots=5,
                         real_slot_promenances=[0.7, 0.8, 0.3, 0.5, 0.3])
         a.fill_news_pool(news_list=news_pool, append=True)
 
         for i in range(200):
-            a.user_arrival(u, interest_decay=False)  # we simulate 200 interactions per user
+            a.user_arrival(u, interest_decay=True)  # we simulate 200 interactions per user
         result.append(a.multiple_arms_avg_reward)
         click_result.append(a.click_per_page)
         exp += 1
-        if exp == 99:
+        if exp == 9:
             a.weighted_betas_matrix[0][0].plot_distribution("politic")
-            a.weighted_betas_matrix[0][0].plot_distribution("tech")
+            a.weighted_betas_matrix[1][3].plot_distribution("politic")
+            a.weighted_betas_matrix[2][3].plot_distribution("politic")
             print(a.weighted_betas_matrix[0][0].category_per_slot_reward_count)
             print(a.weighted_betas_matrix[0][0].category_per_slot_assignment_count)
+            print("--------------------------")
+            print(a.weighted_betas_matrix[1][3].category_per_slot_reward_count)
+            print(a.weighted_betas_matrix[1][3].category_per_slot_assignment_count)
+            print("--------------------------")
+            print(a.weighted_betas_matrix[2][3].category_per_slot_reward_count)
+            print(a.weighted_betas_matrix[2][3].category_per_slot_assignment_count)
 
     plt.plot(np.mean(result, axis=0))
     plt.title("Reward - " + str(u.user_quality_measure))
