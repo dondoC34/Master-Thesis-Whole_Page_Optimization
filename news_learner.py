@@ -13,8 +13,8 @@ class NewsLearner:
     # Category and Layout slots for direct user interactions,
     # Real slot promenances for syntethic user interactions
 
-    def __init__(self, categories=[], layout_slots=10, real_slot_promenances=[], news_row_pivot=[1, 2],
-                 news_column_pivot=[0.5, 1, 2]):
+    def __init__(self, categories=[], layout_slots=10, real_slot_promenances=[], news_column_pivot=[0.01, 1],
+                 news_row_pivot=[1]):
 
         self.categories = categories  # params to be learnt, the categories of news and ads
         self.last_proposal_weights = np.ones(len(self.categories))  # used to speed up the process of rejecton sampl.
@@ -42,8 +42,9 @@ class NewsLearner:
             self.weighted_betas_matrix.append(row.copy())
 
     # Returns a TS-sample for category k, either with standard TS approach or PBM approach
-    def sample_quality(self, category, approach="standard", interest_decay=False):
+    def sample_quality(self, news, approach="standard", interest_decay=False):
 
+        category = news[0].news_category
         if approach == "standard":
 
             index = self.categories.index(category)
@@ -51,10 +52,9 @@ class NewsLearner:
         elif approach == "position_based_model":
 
             if interest_decay:
-                return self.weighted_betas_matrix[0][0].sample(category=category)
-                # TODO
+                news[0].set_sampled_quality(value=self.weighted_betas_matrix[news[1]][news[2]].sample(category=category))
             else:
-                return self.weighted_betas_matrix[0][0].sample(category=category)
+                news[0].set_sampled_quality(value=self.weighted_betas_matrix[0][0].sample(category=category))
 
     # Returns a TS- sample or a real value for the slot promenance of the slot k (k=-1 for all the slots)
     def sample_promenance(self, slot=-1, use_real_value=True):
@@ -116,9 +116,7 @@ class NewsLearner:
 
         for news in self.news_pool:
             # decay_factor = np.exp(- self.last_news_observed.count(news.news_id))
-            news[0].set_sampled_quality(value=self.sample_quality(news[0].news_category,
-                                        approach="position_based_model",
-                                        interest_decay=interest_decay))
+            self.sample_quality(news=news, approach="position_based_model", interest_decay=interest_decay)
 
         self.news_pool.sort(key=lambda x: x[0].sampled_quality, reverse=True)
         tmp_news_pool = self.news_pool.copy()
@@ -141,7 +139,7 @@ class NewsLearner:
                     i = 0
                     while assigning_news[0].slot_promenance_cumsum > self.news_column_pivots[i]:
                         i += 1
-                    assigning_news[3] = i + 1
+                    assigning_news[3] = i
                 else:
                     assigning_news[3] = len(self.news_column_pivots)
             else:
@@ -196,25 +194,17 @@ if __name__ == "__main__":
     news_pool = []
     k = 0
     for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
-        for id in range(1, 21):
+        for id in range(1, 200):
             news_pool.append(News(news_id=k,
                                   news_name=category + "-" + str(id)))
             k += 1
-
-            if category + "-" + str(id) in ["cibo-1", "cibo-6", "cibo-13", "cibo-17",
-                                            "gossip-14",
-                                            "politic-5", "politic-19",
-                                            "scienza-6", "scienza-11",
-                                            "sport-1", "sport-6", "sport-8", "sport-19", "sport-20",
-                                            "tech-4", "tech-10", "tech-14", "tech-20"]:
-                news_pool.__delitem__(-1)
 
     exp = 0
     result = []
     click_result = []
 
     # Then we perform 100 experiments and use the collected data to plot the regrets and distributions
-    while exp < 10:
+    while exp < 1:
         print("exp " + str(exp))
         # We create a user and set their quality metrics that we want to estimate
         u = SyntheticUser(23, "M", 27, "C")  # A male 27 years old user, that is transparent to slot promenances
@@ -223,23 +213,23 @@ if __name__ == "__main__":
                         real_slot_promenances=[0.7, 0.8, 0.3, 0.5, 0.3])
         a.fill_news_pool(news_list=news_pool, append=True)
 
-        for i in range(200):
+        for i in range(1000):
             a.user_arrival(u, interest_decay=True)  # we simulate 200 interactions per user
         result.append(a.multiple_arms_avg_reward)
         click_result.append(a.click_per_page)
-        exp += 1
-        if exp == 9:
+        if exp == 0:
             a.weighted_betas_matrix[0][0].plot_distribution("politic")
-            a.weighted_betas_matrix[1][3].plot_distribution("politic")
-            a.weighted_betas_matrix[2][3].plot_distribution("politic")
+            a.weighted_betas_matrix[0][1].plot_distribution("politic")
+            a.weighted_betas_matrix[1][2].plot_distribution("politic")
             print(a.weighted_betas_matrix[0][0].category_per_slot_reward_count)
             print(a.weighted_betas_matrix[0][0].category_per_slot_assignment_count)
             print("--------------------------")
-            print(a.weighted_betas_matrix[1][3].category_per_slot_reward_count)
-            print(a.weighted_betas_matrix[1][3].category_per_slot_assignment_count)
+            print(a.weighted_betas_matrix[0][1].category_per_slot_reward_count)
+            print(a.weighted_betas_matrix[0][1].category_per_slot_assignment_count)
             print("--------------------------")
-            print(a.weighted_betas_matrix[2][3].category_per_slot_reward_count)
-            print(a.weighted_betas_matrix[2][3].category_per_slot_assignment_count)
+            print(a.weighted_betas_matrix[1][2].category_per_slot_reward_count)
+            print(a.weighted_betas_matrix[1][2].category_per_slot_assignment_count)
+        exp += 1
 
     plt.plot(np.mean(result, axis=0))
     plt.title("Reward - " + str(u.user_quality_measure))

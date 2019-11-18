@@ -54,10 +54,12 @@ class SyntheticUser:
     # Returns the reward obtained by showing the news "news" to the user keeping into account the number of times
     # the user already clicked the news
     def click_news(self, news, interest_decay=False):
+        # TODO observation but not click decay
         category_index = self.categories.index(news.news_category)
 
         if interest_decay:
-            click = np.random.binomial(1, np.exp(- self.last_news_clicked.count(news)) *
+            interest_decay_factor = np.exp(- self.last_news_clicked.count(news))
+            click = np.random.binomial(1, interest_decay_factor *
                                        self.user_quality_measure[category_index])
         else:
             click = np.random.binomial(1, self.user_quality_measure[category_index])
