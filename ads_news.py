@@ -1,3 +1,5 @@
+import scipy.optimize as opt
+import numpy as np
 
 class News:
 
@@ -10,6 +12,7 @@ class News:
         self.image_path = "News-AdsApp - Copia/" + news_name + ".gif"
         self.slot_promenance_cumsum = 0
         self.click_sum = 0
+        self.prova = [1, 2, 3]
 
     def set_sampled_quality(self, value):
         self.sampled_quality = value
@@ -37,3 +40,15 @@ class Ad:
             return False
         else:
             return True
+
+
+if __name__ == "__main__":
+
+    a = [["b", 1], ["a", 2], ["c", 3]]
+    found = next((x for x in a if x[0] == "k"), None)
+    print(found)
+
+
+
+
+

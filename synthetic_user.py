@@ -3,18 +3,29 @@ from news_learner import *
 slot_number = 5
 categories_number = 6
 categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
+age_classes = ["LOW", "MEDIUM", "HIGH"]
+genre_classes = ["M", "F"]
+quality_per_age_values = [[0.2, 0.4, 0.2, 0.4, 0.8, 0.6],
+                          [0.4, 0.3, 0.6, 0.5, 0.7, 0.5],
+                          [0.5, 0.5, 0.7, 0.4, 0.6, 0.3]]
+quality_per_genre_values = [[0.6, 0.2, 0.7, 0.5, 0.8, 0.6],
+                            [0.5, 0.7, 0.5, 0.5, 0.3, 0.5]]
+quality_per_age_var = [[0.6, 0.2, 0.1, 0.5, 0.4, 0.5],
+                       [0.4, 0.3, 0.2, 0.35, 0.3, 0.4],
+                       [0.2, 0.2, 0.3, 0.2, 0.3, 0.3]]
+quality_per_genre_var = [[0.2, 0.2, 0.1, 0.2, 0.2, 0.2],
+                         [0.4, 0.4, 0.2, 0.2, 0.4, 0.3]]
 
 
 class SyntheticUser:
     def __init__(self, user_id, genre, age, attention_bias_category):
         self.user_id = user_id
         self.last_news_clicked = []
+        self.last_news_in_allocation = []
+        self.viewed_but_not_clicked_news = []
         self.genre = genre
         self.categories = categories
         self.user_quality_measure = []
-        # We assing a random number for each category's quality measure for the user
-        for i in range(categories_number):
-            self.user_quality_measure.append(np.random.uniform(0, 1))
         # Depending on the age, we split the users in 3 categories
         self.age_slot = "LOW"
         if (age > 20) and (age < 50):
@@ -39,6 +50,15 @@ class SyntheticUser:
         else:
             for i in range(slot_number):
                 self.attention_function.append(np.min(1, np.max([0, np.random.normal(0.5, 2)])))
+        age_index = age_classes.index(self.age_slot)
+        genre_index = genre_classes.index(self.genre)
+
+        self.user_quality_measure = np.random.normal(np.mean([quality_per_age_values[age_index], quality_per_genre_values[genre_index]], axis=0),
+                                                     np.mean([quality_per_age_var[age_index], quality_per_genre_var[genre_index]], axis=0))
+
+        for i in range(len(self.user_quality_measure)):
+            value = np.min([0.9, np.max([0.1, self.user_quality_measure[i]])])
+            self.user_quality_measure[i] = value
 
         # This will be used in case of context generation
         self.personal_learner = None
@@ -54,18 +74,20 @@ class SyntheticUser:
     # Returns the reward obtained by showing the news "news" to the user keeping into account the number of times
     # the user already clicked the news
     def click_news(self, news, interest_decay=False):
-        # TODO observation but not click decay
         category_index = self.categories.index(news.news_category)
 
         if interest_decay:
             interest_decay_factor = np.exp(- self.last_news_clicked.count(news))
-            click = np.random.binomial(1, interest_decay_factor *
+            interest_decay_factor_2 = np.exp(- 0.5 * self.viewed_but_not_clicked_news.count(news))
+            click = np.random.binomial(1, interest_decay_factor * interest_decay_factor_2 *
                                        self.user_quality_measure[category_index])
         else:
             click = np.random.binomial(1, self.user_quality_measure[category_index])
 
-        if (click == 1) and interest_decay:
+        if (click == 1) and interest_decay and (self.last_news_clicked.count(news) == 0):
             self.last_news_clicked.append(news)
+        elif (click == 0) and interest_decay and (self.viewed_but_not_clicked_news.count(news) < 3):
+            self.viewed_but_not_clicked_news.append(news)
 
         return click, self.user_quality_measure[category_index]
 
