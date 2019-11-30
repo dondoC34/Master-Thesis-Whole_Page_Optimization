@@ -48,9 +48,9 @@ class NewsLearner:
             self.weighted_betas_matrix.append(row.copy())
 
     # Returns a TS-sample for category k, either with standard TS approach or PBM approach
-    def sample_quality(self, news, approach="standard", interest_decay=False):
+    def sample_quality(self, news, user, approach="standard", interest_decay=False):
 
-        category = news[0].news_category
+        category = news.news_category
         if approach == "standard":
 
             index = self.categories.index(category)
@@ -58,9 +58,27 @@ class NewsLearner:
         elif approach == "position_based_model":
 
             if interest_decay:
-                news[0].set_sampled_quality(value=self.weighted_betas_matrix[news[1]][news[2]].sample(category=category))
+                slot_promenance_cumsum = next((x[1] for x in user.last_news_in_allocation if x[0] == news), 0)
+                total_num_of_clicks = next((x[1] for x in user.last_news_clicked if x[0] == news), 0)
+
+                if slot_promenance_cumsum < self.news_column_pivots[-1]:
+                    k = 0
+                    while slot_promenance_cumsum >= self.news_column_pivots[k]:
+                        k += 1
+                    weighted_beta_matrix_posy = k
+                else:
+                    weighted_beta_matrix_posy = len(self.news_column_pivots)
+
+                if total_num_of_clicks < self.news_row_pivots[-1]:
+                    k = 0
+                    while total_num_of_clicks >= self.news_row_pivots[k]:
+                        k += 1
+                    weighted_beta_matrix_posx = k
+                else:
+                    weighted_beta_matrix_posx = len(self.news_row_pivots)
+                news.set_sampled_quality(value=self.weighted_betas_matrix[weighted_beta_matrix_posx][weighted_beta_matrix_posy].sample(category=category))
             else:
-                news[0].set_sampled_quality(value=self.weighted_betas_matrix[0][0].sample(category=category))
+                news.set_sampled_quality(value=self.weighted_betas_matrix[0][0].sample(category=category))
 
     # Returns a TS- sample or a real value for the slot promenance of the slot k (k=-1 for all the slots)
     def sample_promenance(self, slot=-1, use_real_value=True):
@@ -87,41 +105,55 @@ class NewsLearner:
                 self.promenance_parameters[slot_nr][1] += 1
 
     # Collect a positive / negative reward for the news(s) k click allocated in slot i(s)
-    def news_click(self, news, clicked=True, slot_nr=[], interest_decay=False):
+    def news_click(self, news, user, clicked=True, slot_nr=[], interest_decay=False):
 
         if clicked:
             i = 0
             for content in news:
-                category_index = self.categories.index(content[0].news_category)
+                category_index = self.categories.index(content.news_category)
                 self.quality_parameters[category_index][0] += 1
                 if len(slot_nr) > 0:
                     if interest_decay:
-                        self.weighted_betas_matrix[content[1]][content[2]].news_click(content[0], slot_nr[i])
-                        content[0].click_sum += 1
-                        if content[0].click_sum <= self.news_row_pivots[-1]:
-                            i = 0
-                            while content[0].click_sum > self.news_row_pivots[i]:
-                                i += 1
-                            content[1] = i + 1
+                        slot_promenance_cumsum = next((x[1] for x in user.last_news_in_allocation if x[0] == content), 0)
+                        total_num_of_clicks = next((x[1] for x in user.last_news_clicked if x[0] == content), 0)
+
+                        if slot_promenance_cumsum < self.news_column_pivots[-1]:
+                            k = 0
+                            while slot_promenance_cumsum >= self.news_column_pivots[k]:
+                                k += 1
+                            weighted_beta_matrix_posy = k
                         else:
-                            content[1] = len(self.news_row_pivots)
-                        content[2] = content[3]
+                            weighted_beta_matrix_posy = len(self.news_column_pivots)
+
+                        if total_num_of_clicks < self.news_row_pivots[-1]:
+                            k = 0
+                            while total_num_of_clicks >= self.news_row_pivots[k]:
+                                k += 1
+                            weighted_beta_matrix_posx = k
+                        else:
+                            weighted_beta_matrix_posx = len(self.news_row_pivots)
+
+                        self.weighted_betas_matrix[weighted_beta_matrix_posx][weighted_beta_matrix_posy].news_click(content, slot_nr[i])
+                        alloc_index = next((x[3] for x in user.last_news_in_allocation if x[0] == content), -1)
+                        click_index = next((x[3] for x in user.last_news_clicked if x[0] == content), -1)
+                        user.last_news_in_allocation[alloc_index][1] = user.last_news_in_allocation[alloc_index][2]
+                        user.last_news_clicked[click_index][1] = user.last_news_clicked[click_index][2]
                     else:
-                        self.weighted_betas_matrix[0][0].news_click(content[0], slot_nr[i])
+                        self.weighted_betas_matrix[0][0].news_click(content, slot_nr[i])
                     i += 1
         else:
             for content in news:
-                index = self.categories.index(content[0].news_category)
+                index = self.categories.index(content.news_category)
                 self.quality_parameters[index][1] += 1
 
     # Given the knowledge of quality and promencances parameters up to now, tries to find the best allocation
     # by start allocating more promising news in more promenant slots
-    def find_best_allocation(self, interest_decay=False):
+    def find_best_allocation(self, user, interest_decay=False):
 
         result_news_allocation = [0] * self.layout_slots
 
         for news in self.news_pool:
-            self.sample_quality(news=news, approach="position_based_model", interest_decay=interest_decay)
+            self.sample_quality(news=news, user=user, approach="position_based_model", interest_decay=interest_decay)
 
         if self.allocation_approach == "standard":
             self.news_pool.sort(key=lambda x: x[0].sampled_quality, reverse=True)
@@ -138,7 +170,7 @@ class NewsLearner:
 
             thetas = []
             for news in self.news_pool:
-                thetas += [news[0].sampled_quality] * self.layout_slots
+                thetas += [news.sampled_quality] * self.layout_slots
             self.C = list(np.array(thetas) * np.array(self.lambdas))
             linear_problem = opt.linprog(A_ub=self.A, b_ub=self.B, c=self.C)
             slots_assegnation_probabilities = []
@@ -153,41 +185,69 @@ class NewsLearner:
                 tmp_slot_probabilities.clear()
                 slot_counter += 1
 
-            if self.lp_rand_tech == "rand_1":
-                tmp_slot_promenances = self.real_slot_promenances.copy()
-                feasible_news = [i for i in range(len(self.news_pool))]
-                slot_counter = 0
-                while slot_counter < self.layout_slots:
+            tmp_slot_promenances = self.real_slot_promenances.copy()
+            feasible_news = [i for i in range(len(self.news_pool))]
+            slot_counter = 0
+            allocated_slots = []
+            while slot_counter < self.layout_slots:
+                if (self.lp_rand_tech == "rand_1") or (self.lp_rand_tech == "rand_3"):
                     target_slot = np.argmax(tmp_slot_promenances)
-                    target_slot_assegnation_probabilities = slots_assegnation_probabilities[int(target_slot)]
-                    target_slot_assegnation_probabilities = list(np.array(target_slot_assegnation_probabilities) * 1 /
-                                                                 sum(target_slot_assegnation_probabilities))
-                    selected_news = np.random.choice(feasible_news, p=target_slot_assegnation_probabilities)
-                    result_news_allocation[int(target_slot)] = self.news_pool[selected_news]
-                    deletion_index = feasible_news.index(selected_news)
-                    feasible_news.__delitem__(deletion_index)
-                    for probs in slots_assegnation_probabilities:
-                        probs.__delitem__(deletion_index)
-                    tmp_slot_promenances[int(target_slot)] = -1
-                    slot_counter += 1
+                else:
+                    tmp_slot_promenance_norm = list(np.array(tmp_slot_promenances) / sum(tmp_slot_promenances))
+                    target_slot_promenance = np.random.choice(tmp_slot_promenances, p=tmp_slot_promenance_norm)
+                    target_slot = tmp_slot_promenances.index(target_slot_promenance)
 
-            elif self.lp_rand_tech == "rand_2":
-                pass
+                target_slot_assegnation_probabilities = slots_assegnation_probabilities[int(target_slot)]
+                if self.lp_rand_tech == "rand_3":
+                    for p in range(len(slots_assegnation_probabilities)):
+                        if (p not in allocated_slots) and (p != target_slot):
+                            target_slot_assegnation_probabilities = \
+                                list(np.array(target_slot_assegnation_probabilities) *
+                                     (1 - np.array(slots_assegnation_probabilities[p])))
+                    allocated_slots.append(target_slot)
+
+                target_slot_assegnation_probabilities_norm = list(np.array(target_slot_assegnation_probabilities) /
+                                                                  sum(target_slot_assegnation_probabilities))
+                selected_news = np.random.choice(feasible_news, p=target_slot_assegnation_probabilities_norm)
+                result_news_allocation[int(target_slot)] = self.news_pool[selected_news]
+                deletion_index = feasible_news.index(selected_news)
+                feasible_news.__delitem__(deletion_index)
+                for probs in slots_assegnation_probabilities:
+                    probs.__delitem__(deletion_index)
+                tmp_slot_promenances[int(target_slot)] = -1
+                slot_counter += 1
 
         for i in range(len(result_news_allocation)):
             if interest_decay:
-                self.weighted_betas_matrix[result_news_allocation[i][1]][result_news_allocation[i][2]].news_allocation(result_news_allocation[i][0], i)
-                assigned_slot_promenance = self.real_slot_promenances[i]
-                result_news_allocation[i][0].slot_promenance_cumsum += assigned_slot_promenance
-                if result_news_allocation[i][0].slot_promenance_cumsum <= self.news_column_pivots[-1]:
+                slot_promenance_cumsum = next((x[1] for x in user.last_news_in_allocation if x[0] == result_news_allocation[i]), 0)
+                total_num_of_clicks = next((x[1] for x in user.last_news_clicked if x[0] == result_news_allocation[i]), 0)
+
+                if slot_promenance_cumsum < self.news_column_pivots[-1]:
                     k = 0
-                    while result_news_allocation[i][0].slot_promenance_cumsum > self.news_column_pivots[k]:
+                    while slot_promenance_cumsum >= self.news_column_pivots[k]:
                         k += 1
-                    result_news_allocation[i][3] = k
+                    weighted_beta_matrix_posy = k
                 else:
-                    result_news_allocation[i][3] = len(self.news_column_pivots)
+                    weighted_beta_matrix_posy = len(self.news_column_pivots)
+
+                if total_num_of_clicks < self.news_row_pivots[-1]:
+                    k = 0
+                    while total_num_of_clicks >= self.news_row_pivots[k]:
+                        k += 1
+                    weighted_beta_matrix_posx = k
+                else:
+                    weighted_beta_matrix_posx = len(self.news_row_pivots)
+
+                self.weighted_betas_matrix[weighted_beta_matrix_posx][weighted_beta_matrix_posy].news_allocation(result_news_allocation[i], i)
+                assigned_slot_promenance = self.real_slot_promenances[i]
+                index = next((x[3] for x in user.last_news_in_allocation if x[0] == result_news_allocation[i]), -1)
+                if index == -1:
+                    user.last_news_in_allocation.append([result_news_allocation[i], 0, assigned_slot_promenance,
+                                                         len(user.last_news_in_allocation)])
+                else:
+                    user.last_news_in_allocation[index][2] += assigned_slot_promenance
             else:
-                self.weighted_betas_matrix[0][0].news_allocation(result_news_allocation[i][0], i)
+                self.weighted_betas_matrix[0][0].news_allocation(result_news_allocation[i], i)
 
         return result_news_allocation
 
@@ -197,7 +257,7 @@ class NewsLearner:
         news_per_category_count = [0] * len(self.categories)
         if append:
             for news in news_list:
-                self.news_pool.append([news, 0, 0, 0])
+                self.news_pool.append(news)
                 index = self.categories.index(news.news_category)
                 news_per_category_count[index] += 1
 
@@ -230,8 +290,6 @@ class NewsLearner:
                         target_index += self.layout_slots
 
                     self.A.append(row.copy())
-
-
         else:
             self.news_pool = news_list.copy()
 
@@ -244,23 +302,72 @@ class NewsLearner:
     # When a user arrives, finds an allocation for that user by exploiting the knowledge accumulated so far, then
     # simulates the users interactions with the proposed page and collects the information
     def user_arrival(self, user, interest_decay=False):
-        allocation = self.find_best_allocation(interest_decay=interest_decay)
+        allocation = self.find_best_allocation(user=user, interest_decay=interest_decay)
         user_observation_probabilities = user.observation_probabilities(self.real_slot_promenances)
         arm_rewards = []
         page_clicks = 0
 
         for i in range(len(user_observation_probabilities)):
             outcome = np.random.binomial(1, user_observation_probabilities[i])
-            clicked, avg_reward = user.click_news(allocation[i][0], interest_decay=interest_decay)
-            arm_rewards.append(avg_reward)
-            if (outcome == 1) and (clicked == 1):
-                self.news_click([allocation[i]], slot_nr=[i], interest_decay=interest_decay)
-                page_clicks += 1
+            if outcome == 1:
+                clicked, avg_reward = user.click_news(allocation[i], interest_decay=interest_decay)
+                arm_rewards.append(avg_reward)
+                if clicked == 1:
+                    self.news_click(news=[allocation[i]], slot_nr=[i], interest_decay=interest_decay, user=user)
+                    page_clicks += 1
             else:
-                allocation[i][2] = allocation[i][3]
+                index = next((x[3] for x in user.last_news_in_allocation if x[0] == allocation[i]), -1)
+                user.last_news_in_allocation[index][1] = user.last_news_in_allocation[index][2]
 
-        self.multiple_arms_avg_reward.append(np.mean(arm_rewards))
-        self.click_per_page.append(page_clicks)
+        # self.multiple_arms_avg_reward.append(np.mean(arm_rewards))
+        # self.click_per_page.append(page_clicks)
+
+    def save_weighted_beta_matrices(self):
+        for i in range(len(self.weighted_betas_matrix)):
+            for j in range(len(self.weighted_betas_matrix[0])):
+                file = open("Weighted_Beta_" + str(i) + "_" + str(j) + "_reward.txt", "w")
+                for reward_row in self.weighted_betas_matrix[i][j].category_per_slot_reward_count:
+                    for value in reward_row:
+                        file.write(str(value))
+                        file.write(",")
+                    file.write("\n")
+                file.close()
+                file = open("Weighted_Beta_" + str(i) + "_" + str(j) + "_assignment.txt", "w")
+                for assignment_row in self.weighted_betas_matrix[i][j].category_per_slot_assignment_count:
+                    for value in assignment_row:
+                        file.write(str(value))
+                        file.write(",")
+                    file.write("\n")
+                file.close()
+
+    def insert_into_news_pool(self, news):
+
+        category_index = self.categories.index(news.news_category)
+        for i in range(len(self.news_pool)):
+            if self.news_pool[i].news_category == news.news_category:
+                self.news_pool.insert(i + 1, news)
+
+        if self.allocation_approach == "LP":
+            # Update of the category constraints in matrix A due to the new news
+            for i in range(len(self.categories)):
+                if (i != len(self.categories) - 1) and (i != category_index):
+                    self.A[i] += [0] * len(self.real_slot_promenances)
+                elif (i == len(self.categories) - 1) and (i != category_index):
+                    self.A[i] = [0] * len(self.real_slot_promenances) + self.A[i]
+                else:
+                    block_to_be_inserted = list(np.array(self.real_slot_promenances) * -1)
+                    for j in range(len(self.A[i])):
+                        if self.A[i][j] != 0:
+                            break
+                    self.A[i] = self.A[i][0:j] + block_to_be_inserted + self.A[i][j:len(self.A[i])]
+
+            # Update of the slot's capacity constraints in matrix A due to the new news
+
+            for i in range(len(self.categories), len(self.A)):
+                target_index = i - len(self.categories)
+                block_to_be_inserted = [0] * self.layout_slots
+                block_to_be_inserted[target_index] = 1
+                self.A[i] += block_to_be_inserted
 
 
 if __name__ == "__main__":
@@ -268,8 +375,8 @@ if __name__ == "__main__":
     # We fill the news pool with a bounch of news
     news_pool = []
     k = 0
-    for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
-        for id in range(1, 100):
+    for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
+        for id in range(1, 400):
             news_pool.append(News(news_id=k,
                                   news_name=category + "-" + str(id)))
             k += 1
@@ -297,7 +404,7 @@ if __name__ == "__main__":
         if exp == 0:
             a.weighted_betas_matrix[0][0].plot_distribution("politic")
             a.weighted_betas_matrix[0][1].plot_distribution("politic")
-            a.weighted_betas_matrix[1][2].plot_distribution("politic")
+            a.weighted_betas_matrix[0][2].plot_distribution("politic")
             print(a.weighted_betas_matrix[0][0].category_per_slot_reward_count)
             print(a.weighted_betas_matrix[0][0].category_per_slot_assignment_count)
             print("--------------------------")
@@ -306,16 +413,18 @@ if __name__ == "__main__":
             print("--------------------------")
             print(a.weighted_betas_matrix[1][2].category_per_slot_reward_count)
             print(a.weighted_betas_matrix[1][2].category_per_slot_assignment_count)
+            print(u.last_news_clicked)
         exp += 1
+        a.save_weighted_beta_matrices()
 
-    plt.plot(np.mean(result, axis=0))
-    plt.title("Reward - " + str(u.user_quality_measure))
-    plt.show()
-    plt.title("Regret - " + str(u.user_quality_measure))
-    plt.plot(np.cumsum(np.max(u.user_quality_measure) - np.array(np.mean(result, axis=0))))
-    plt.show()
-    plt.title("Page Clicks - " + str(u.user_quality_measure))
-    plt.plot(np.mean(click_result, axis=0))
-    plt.show()
+    # plt.plot(np.mean(result, axis=0))
+    # plt.title("Reward - " + str(u.user_quality_measure))
+    # plt.show()
+    # plt.title("Regret - " + str(u.user_quality_measure))
+    # plt.plot(np.cumsum(np.max(u.user_quality_measure) - np.array(np.mean(result, axis=0))))
+    # plt.show()
+    # plt.title("Page Clicks - " + str(u.user_quality_measure))
+    # plt.plot(np.mean(click_result, axis=0))
+    # plt.show()
 
 

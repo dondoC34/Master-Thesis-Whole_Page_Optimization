@@ -10,11 +10,11 @@ quality_per_age_values = [[0.2, 0.4, 0.2, 0.4, 0.8, 0.6],
                           [0.5, 0.5, 0.7, 0.4, 0.6, 0.3]]
 quality_per_genre_values = [[0.6, 0.2, 0.7, 0.5, 0.8, 0.6],
                             [0.5, 0.7, 0.5, 0.5, 0.3, 0.5]]
-quality_per_age_var = [[0.6, 0.2, 0.1, 0.5, 0.4, 0.5],
-                       [0.4, 0.3, 0.2, 0.35, 0.3, 0.4],
-                       [0.2, 0.2, 0.3, 0.2, 0.3, 0.3]]
-quality_per_genre_var = [[0.2, 0.2, 0.1, 0.2, 0.2, 0.2],
-                         [0.4, 0.4, 0.2, 0.2, 0.4, 0.3]]
+quality_per_age_var = [[0.2, 0.1, 0.1, 0.2, 0.2, 0.2],
+                       [0.1, 0.2, 0.2, 0.15, 0.1, 0.25],
+                       [0.1, 0.1, 0.2, 0.1, 0.2, 0.3]]
+quality_per_genre_var = [[0.1, 0.1, 0.1, 0.2, 0.1, 0.1],
+                         [0.2, 0.1, 0.2, 0.2, 0.2, 0.1]]
 
 
 class SyntheticUser:
@@ -77,16 +77,19 @@ class SyntheticUser:
         category_index = self.categories.index(news.news_category)
 
         if interest_decay:
-            interest_decay_factor = np.exp(- self.last_news_clicked.count(news))
+            num_of_clicks = next((x[1] for x in self.last_news_clicked if x[0] == news), 0)
+            interest_decay_factor = np.exp(- num_of_clicks)
             interest_decay_factor_2 = np.exp(- 0.5 * self.viewed_but_not_clicked_news.count(news))
             click = np.random.binomial(1, interest_decay_factor * interest_decay_factor_2 *
                                        self.user_quality_measure[category_index])
         else:
             click = np.random.binomial(1, self.user_quality_measure[category_index])
 
-        if (click == 1) and interest_decay and (self.last_news_clicked.count(news) == 0):
-            self.last_news_clicked.append(news)
-        elif (click == 0) and interest_decay and (self.viewed_but_not_clicked_news.count(news) < 3):
+        index = next((x[3] for x in self.last_news_clicked if x[0] == news), -1)
+
+        if (click == 1) and interest_decay and (index == -1):
+            self.last_news_clicked.append([news, 0, 1, len(self.last_news_clicked)])
+        elif (click == 0) and interest_decay and (self.viewed_but_not_clicked_news.count(news) <= 2):
             self.viewed_but_not_clicked_news.append(news)
 
         return click, self.user_quality_measure[category_index]
@@ -125,6 +128,11 @@ def write_random_users_in_file(filename, number_of_users):
                    np.random.choice(attention_bias_category_list) +
                    "\n")
     file.close()
+
+
+if __name__ == "__main__":
+    luca = SyntheticUser(12, "M", 23, attention_bias_category="C")
+    print(luca.user_quality_measure)
 
 
 

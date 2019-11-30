@@ -44,10 +44,9 @@ class Ad:
 
 if __name__ == "__main__":
 
-    a = [["b", 1], ["a", 2], ["c", 3]]
-    found = next((x for x in a if x[0] == "k"), None)
-    print(found)
-
+    a = [1, 2, 3]
+    a = a[0:1] + [4, 4] + a[1:len(a)]
+    print(a)
 
 
 
