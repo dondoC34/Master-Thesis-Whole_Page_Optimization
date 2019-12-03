@@ -44,9 +44,9 @@ class Ad:
 
 if __name__ == "__main__":
 
-    a = [1, 2, 3]
-    a = a[0:1] + [4, 4] + a[1:len(a)]
-    print(a)
+
+    print(0 / 0)
+
 
 
 

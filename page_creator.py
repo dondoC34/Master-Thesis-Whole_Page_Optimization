@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     num_of_users = 30
     num_of_news_per_category = 1000
-    num_of_interaction = 5000
+    num_of_interaction = 8000
 
     for i in range(num_of_users):
         user_pool.append(SyntheticUser(i, np.random.choice(user_genres), np.random.choice(user_age), "C"))
@@ -59,13 +59,23 @@ if __name__ == "__main__":
 
     site.fill_all_news_pool(news_pool)
 
+    # for i in range(len(site.learner_matrix)):
+    #     for j in range(len(site.learner_matrix[i])):
+    #         site.learner_matrix[i][j].read_weighted_beta_matrix_from_file(indexes=[(0, 0), (0, 1), (0, 2), (1, 1),
+    #                                                                                (1, 2)],
+    #                                                                       desinences=[str(i) + "-" + str(j)] * 5)
+    #
+    # site.learner_matrix[1][0].weighted_betas_matrix[0][0].plot_distribution("politic")
+    # site.learner_matrix[1][2].weighted_betas_matrix[1][1].plot_distribution("tech")
+    # exit(34)
+
     for _ in tqdm(range(num_of_interaction)):
         user = np.random.choice(user_pool)
         site.user_interaction(user=user)
 
     for i in range(len(site.learner_matrix)):
         for j in range(len(site.learner_matrix[i])):
-            site.learner_matrix[i][j].save_weighted_beta_matrices()
+            site.learner_matrix[i][j].save_weighted_beta_matrices(desinence=str(i) + "--" + str(j))
 
 
 

@@ -44,7 +44,8 @@ class NewsLearner:
             for _ in range(len(news_column_pivot) + 1):
                 row.append(WeightedBetaDistribution(self.categories,
                                                     self.layout_slots,
-                                                    self.real_slot_promenances))
+                                                    self.real_slot_promenances,
+                                                    target_dist_auto_increasing=False))
             self.weighted_betas_matrix.append(row.copy())
 
     # Returns a TS-sample for category k, either with standard TS approach or PBM approach
@@ -156,7 +157,7 @@ class NewsLearner:
             self.sample_quality(news=news, user=user, approach="position_based_model", interest_decay=interest_decay)
 
         if self.allocation_approach == "standard":
-            self.news_pool.sort(key=lambda x: x[0].sampled_quality, reverse=True)
+            self.news_pool.sort(key=lambda x: x.sampled_quality, reverse=True)
             tmp_news_pool = self.news_pool.copy()
             slot_promenances = self.sample_promenance().copy()
 
@@ -193,6 +194,7 @@ class NewsLearner:
                 if (self.lp_rand_tech == "rand_1") or (self.lp_rand_tech == "rand_3"):
                     target_slot = np.argmax(tmp_slot_promenances)
                 else:
+                    # TODO problema con la rimozione degli slot una volta assegnati
                     tmp_slot_promenance_norm = list(np.array(tmp_slot_promenances) / sum(tmp_slot_promenances))
                     target_slot_promenance = np.random.choice(tmp_slot_promenances, p=tmp_slot_promenance_norm)
                     target_slot = tmp_slot_promenances.index(target_slot_promenance)
@@ -315,28 +317,28 @@ class NewsLearner:
                 if clicked == 1:
                     self.news_click(news=[allocation[i]], slot_nr=[i], interest_decay=interest_decay, user=user)
                     page_clicks += 1
-            else:
+            elif interest_decay:
                 index = next((x[3] for x in user.last_news_in_allocation if x[0] == allocation[i]), -1)
                 user.last_news_in_allocation[index][1] = user.last_news_in_allocation[index][2]
 
         # self.multiple_arms_avg_reward.append(np.mean(arm_rewards))
         # self.click_per_page.append(page_clicks)
 
-    def save_weighted_beta_matrices(self):
+    def save_weighted_beta_matrices(self, desinence):
         for i in range(len(self.weighted_betas_matrix)):
-            for j in range(len(self.weighted_betas_matrix[0])):
-                file = open("Weighted_Beta_" + str(i) + "_" + str(j) + "_reward.txt", "w")
+            for j in range(len(self.weighted_betas_matrix[i])):
+                file = open("Weighted_Beta_" + str(i) + "_" + str(j) + "_reward_" + desinence + ".txt", "w")
                 for reward_row in self.weighted_betas_matrix[i][j].category_per_slot_reward_count:
-                    for value in reward_row:
-                        file.write(str(value))
-                        file.write(",")
+                    file.write(str(reward_row[0]))
+                    for k in range(1, len(reward_row)):
+                        file.write("," + str(reward_row[k]))
                     file.write("\n")
                 file.close()
-                file = open("Weighted_Beta_" + str(i) + "_" + str(j) + "_assignment.txt", "w")
+                file = open("Weighted_Beta_" + str(i) + "_" + str(j) + "_assignment_" + desinence + ".txt", "w")
                 for assignment_row in self.weighted_betas_matrix[i][j].category_per_slot_assignment_count:
-                    for value in assignment_row:
-                        file.write(str(value))
-                        file.write(",")
+                    file.write(str(assignment_row[0]))
+                    for k in range(1, len(assignment_row)):
+                        file.write("," + str(assignment_row[k]))
                     file.write("\n")
                 file.close()
 
@@ -362,12 +364,36 @@ class NewsLearner:
                     self.A[i] = self.A[i][0:j] + block_to_be_inserted + self.A[i][j:len(self.A[i])]
 
             # Update of the slot's capacity constraints in matrix A due to the new news
-
             for i in range(len(self.categories), len(self.A)):
                 target_index = i - len(self.categories)
                 block_to_be_inserted = [0] * self.layout_slots
                 block_to_be_inserted[target_index] = 1
                 self.A[i] += block_to_be_inserted
+
+    def read_weighted_beta_matrix_from_file(self, indexes, desinences):
+
+        for i in range(len(indexes)):
+            matrix = []
+            file = open("Weighted_Beta_" + str(indexes[i][0]) + "_" + str(indexes[i][1]) + "_assignment_" + str(
+                desinences[i]) + ".txt", 'r')
+            lines = file.read().splitlines()
+            for line in lines:
+                line_splitted = line.split(",")
+                matrix.append(list(map(float, line_splitted)))
+            self.weighted_betas_matrix[indexes[i][0]][indexes[i][1]].category_per_slot_assignment_count = matrix.copy()
+
+            matrix.clear()
+            file = open("Weighted_Beta_" + str(indexes[i][0]) + "_" + str(indexes[i][1]) + "_reward_" + str(
+                desinences[i]) + ".txt", 'r')
+            lines = file.read().splitlines()
+            for line in lines:
+                line_splitted = line.split(",")
+                matrix.append(list(map(float, line_splitted)))
+            self.weighted_betas_matrix[indexes[i][0]][indexes[i][1]].category_per_slot_reward_count = matrix.copy()
+
+    def remove_news_from_pool(self, news):
+
+        category_index = self.categories.index(news.news_category)
 
 
 if __name__ == "__main__":
@@ -376,7 +402,7 @@ if __name__ == "__main__":
     news_pool = []
     k = 0
     for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
-        for id in range(1, 400):
+        for id in range(1, 10):
             news_pool.append(News(news_id=k,
                                   news_name=category + "-" + str(id)))
             k += 1
@@ -392,13 +418,12 @@ if __name__ == "__main__":
         u = SyntheticUser(23, "M", 27, "C")  # A male 27 years old user, that is transparent to slot promenances
         u.user_quality_measure = [0.2, 0.3, 0.7, 0.2, 0.2, 0.4]
         a = NewsLearner(categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"], layout_slots=5,
-                        real_slot_promenances=[0.7, 0.8, 0.3, 0.5, 0.3], allocation_approach="LP")
+                        real_slot_promenances=[0.7, 0.8, 0.3, 0.5, 0.3], allocation_approach="standard")
         a.fill_news_pool(news_list=news_pool, append=True)
 
         for i in range(300):
-            if i % 100 == 0:
-                print(i)
-            a.user_arrival(u, interest_decay=True)  # we simulate 200 interactions per user
+            print(i)
+            a.user_arrival(u, interest_decay=False)  # we simulate 200 interactions per user
         result.append(a.multiple_arms_avg_reward)
         click_result.append(a.click_per_page)
         if exp == 0:
@@ -415,7 +440,7 @@ if __name__ == "__main__":
             print(a.weighted_betas_matrix[1][2].category_per_slot_assignment_count)
             print(u.last_news_clicked)
         exp += 1
-        a.save_weighted_beta_matrices()
+        a.save_weighted_beta_matrices(desinence="ciaoo")
 
     # plt.plot(np.mean(result, axis=0))
     # plt.title("Reward - " + str(u.user_quality_measure))
