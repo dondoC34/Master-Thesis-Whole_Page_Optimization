@@ -1,6 +1,6 @@
 import numpy as np
 from news_learner import *
-slot_number = 5
+slot_number = 10
 categories_number = 6
 categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
 age_classes = ["LOW", "MEDIUM", "HIGH"]

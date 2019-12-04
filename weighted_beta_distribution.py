@@ -29,6 +29,13 @@ class WeightedBetaDistribution:
             if count % 30 == 0:
                 proposal_weight /= 10
 
+            if count == 300000:
+                print("cannot sample")
+                self.plot_distribution(category=category)
+                print(self.category_per_slot_assignment_count)
+                print("----")
+                print(self.category_per_slot_reward_count)
+
             x_proposal = self.__sample_uniform()
             y_proposal = self.__uniform_pdf(weight=30 * proposal_weight)
             y_sample = np.random.uniform(0, y_proposal)
