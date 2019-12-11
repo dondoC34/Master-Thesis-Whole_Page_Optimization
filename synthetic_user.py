@@ -135,23 +135,10 @@ def write_random_users_in_file(filename, number_of_users):
 
 
 if __name__ == "__main__":
-    file = open("perf_rand_1.txt", "r")
-    result = file.read().split(",")
-    result.__delitem__(-1)
-    result = list(map(float, result))
-    file = open("perf_rand_2.txt", "r")
-    result2 = file.read().split(",")
-    result2.__delitem__(-1)
-    result2 = list(map(float, result2))
-    file = open("perf_rand_3.txt", "r")
-    result3 = file.read().split(",")
-    result3.__delitem__(-1)
-    result3 = list(map(float, result3))
-    print(len(result))
-    res = [result, result2, result3]
-    plt.hist(res, range=(0, 0.7), rwidth=0.5, density=True)
-    plt.legend(["rand_1", "rand_2", "rand_3"])
-    plt.show()
+    """
+    Not relevant main.
+    """
+    pass
 
 
 

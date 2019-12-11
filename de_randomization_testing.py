@@ -3,47 +3,42 @@ from synthetic_user import *
 from tqdm import tqdm
 
 
-def save_allocation_errors():
+def save_allocation_errors(learners_list):
+    """
+    Saves the allocation diversity bounds max errors for a given list of learners relative to
+    ALL THE 3 DE-RANDOMIZATION TECHNIQUES rand_1, rand_2 and rand_3.
+    Three files ".txt" are saved containing the just mentioned info.
+    Call only if the method "measure_allocation_diversity_bounds_errors" of each learner
+    in the list has been called before.
+    :return: nothing
+    """
     file = open("perf_rand_1.txt", "w")
     file2 = open("perf_rand_2.txt", "w")
     file3 = open("perf_rand_3.txt", "w")
-    for i in range(1, 4):
+    for learner in learners_list:
         if i % 3 == 1:
-            file.write(str(learner_rand_1.rand_1_errors[0]))
-            file2.write(str(learner_rand_1.rand_2_errors[0]))
-            file3.write(str(learner_rand_1.rand_3_errors[0]))
-            for k in range(1, len(learner_rand_1.rand_1_errors)):
-                file.write("," + str(learner_rand_1.rand_1_errors[k]))
-                file2.write("," + str(learner_rand_1.rand_2_errors[k]))
-                file3.write("," + str(learner_rand_1.rand_3_errors[k]))
+            file.write(str(learner.rand_1_errors[0]))
+            file2.write(str(learner.rand_2_errors[0]))
+            file3.write(str(learner.rand_3_errors[0]))
+            for k in range(1, len(learner.rand_1_errors)):
+                file.write("," + str(learner.rand_1_errors[k]))
+                file2.write("," + str(learner.rand_2_errors[k]))
+                file3.write("," + str(learner.rand_3_errors[k]))
             file.write(",")
             file2.write(",")
             file3.write(",")
-        if i % 3 == 2:
-            file.write(str(learner_rand_2.rand_1_errors[0]))
-            file2.write(str(learner_rand_2.rand_2_errors[0]))
-            file3.write(str(learner_rand_2.rand_3_errors[0]))
-            for k in range(1, len(learner_rand_2.rand_1_errors)):
-                file.write("," + str(learner_rand_2.rand_1_errors[k]))
-                file2.write("," + str(learner_rand_2.rand_2_errors[k]))
-                file3.write("," + str(learner_rand_2.rand_3_errors[k]))
-            file.write(",")
-            file2.write(",")
-            file3.write(",")
-        else:
-            file.write(str(learner_rand_3.rand_1_errors[0]))
-            file2.write(str(learner_rand_3.rand_2_errors[0]))
-            file3.write(str(learner_rand_3.rand_3_errors[0]))
-            for k in range(1, len(learner_rand_3.rand_1_errors)):
-                file.write("," + str(learner_rand_3.rand_1_errors[k]))
-                file2.write("," + str(learner_rand_3.rand_2_errors[k]))
-                file3.write("," + str(learner_rand_3.rand_3_errors[k]))
-            file.write(",")
-            file2.write(",")
-            file3.write(",")
+    file.close()
+    file2.close()
+    file3.close()
 
 
 def plot_allocation_errors():
+    """
+    Plots an histogram containing the amount of times a de-randomization techinque did that error (in percentage).
+    The plot will contain the info about EACH de-randomization techinque.
+    Call only if the "save_allocation_errors" has been called in precedence and its output files have been saved.
+    :return: Nothing
+    """
     file = open("perf_rand_1.txt", "r")
     result = file.read().split(",")
     result.__delitem__(-1)
@@ -64,13 +59,19 @@ def plot_allocation_errors():
 
 
 if __name__ == "__main__":
+    """
+    Four learner are going to be intialized. Each learner uses a different technique to de-randomize the LP results 
+    (except for the standard learner). The avg results of "iterations" experiments are shown in terms of avg quality 
+    per page and avg number of category per page.
+    Furthermore, the average slot promenance per category given in output by each learner is measured.     
+    """
 
     real_slot_promenances = [0.7, 0.8, 0.7, 0.7, 0.6, 0.5, 0.5, 0.4, 0.3, 0.2]
     categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
     diversity_percentage_for_category = 12.5
     promenance_percentage_value = diversity_percentage_for_category / 100 * sum(real_slot_promenances)
     allocation_diversity_bounds = (promenance_percentage_value, promenance_percentage_value) * 3
-    iteration_per_learner = 2000
+    iterations = 2000
     user = SyntheticUser(23, "M", 35, "C")
     news_per_category = 100
     learner_rand_1 = NewsLearner(categories=categories, layout_slots=10,
@@ -96,11 +97,13 @@ if __name__ == "__main__":
                                    allocation_approach="standard",
                                    allocation_diversity_bounds=allocation_diversity_bounds)
 
+    # READ THE WEIGHTED BETA MATRIX FROM A FILE TO HAVE THE BETAS DISTRIBUTION BE DIFFERENT FROM JUST A UNIFORM
     learner_rand_1.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1de_rand_testing"], folder="")
     learner_rand_2.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1de_rand_testing"], folder="")
     learner_rand_3.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1de_rand_testing"], folder="")
     standard_learner.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1de_rand_testing"], folder="")
 
+    # CREATE AND FILL THE NEWS POOL OF EACH LEARNER
     news_pool = []
     k = 0
     for category in categories:
@@ -114,6 +117,7 @@ if __name__ == "__main__":
     learner_rand_3.fill_news_pool(news_pool)
     standard_learner.fill_news_pool(news_pool)
 
+    # METRICS USED TO DISPLAY THE RESULTS
     page_reward_rand_1 = []
     page_reward_rand_2 = []
     page_reward_rand_3 = []
@@ -131,7 +135,8 @@ if __name__ == "__main__":
     allocations_count_rand_3 = 0
     allocations_count_standard = 0
 
-    for i in tqdm(range(1, iteration_per_learner + 1)):
+    # FOR EACH LEARNER, ALLOCATE A PAGE THEN COLLECT THE MEASURES
+    for i in tqdm(range(1, iterations + 1)):
 
         news_category_in_page = [0] * len(categories)
         allocation_rewards = []
@@ -189,6 +194,7 @@ if __name__ == "__main__":
             page_reward_rand_3.append(sum(np.array(allocation_rewards) * np.array(real_slot_promenances)))
             page_diversity_rand_3.append(sum(news_category_in_page))
 
+    # PRINT THE COLLECTED MEASURES, AFTER AVERAGING THEM
     print("Rand_1 quality metrics:")
     print("Avg page reward: " + str(np.mean(page_reward_rand_1)))
     print("Avg page diversity: " + str(np.mean(page_diversity_rand_1)))
