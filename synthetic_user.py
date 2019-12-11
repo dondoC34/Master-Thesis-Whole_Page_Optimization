@@ -1,6 +1,8 @@
 import numpy as np
 from news_learner import *
 from pulp import *
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 slot_number = 10
 categories_number = 6
@@ -133,41 +135,23 @@ def write_random_users_in_file(filename, number_of_users):
 
 
 if __name__ == "__main__":
-    prob = LpProblem("ciaooo", LpMaximize)
-    c = [1, 2, 3, 4, 3, 4, 2, 4, 5, 6, 7, 4, 3, 1, 2, 3, 5, 4]
-    v1 = [0.7, 0.5, 0.3, 0.7, 0.5, 0.3, 0.7, 0.5, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    v2 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7, 0.5, 0.3, 0.7, 0.5, 0.3, 0.7, 0.5, 0.3]
-    v3 = [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0]
-    v4 = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]
-    v5 = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]
-    v6 = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    v7 = [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    v8 = [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    v9 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
-    v10 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
-    v11 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
-    vars = []
-    for i in range(18):
-        vars.append(LpVariable(str(i), 0, 1, 'Binary'))
-
-    prob += lpSum([c[i] * vars[i] for i in range(18)])
-    prob += lpSum([v1[i] * vars[i] for i in range(18)]) >= 0.2
-    prob += lpSum([v2[i] * vars[i] for i in range(18)]) >= 0.2
-    prob += lpSum([v3[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v4[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v5[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v6[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v7[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v8[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v9[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v10[i] * vars[i] for i in range(18)]) <= 1
-    prob += lpSum([v11[i] * vars[i] for i in range(18)]) <= 1
-
-    prob.solve()
-    for v in prob.variables():
-        if v.varValue > 0:
-            print(v.name, "=", v.varValue)
-    print(value(prob.objective))
+    file = open("perf_rand_1.txt", "r")
+    result = file.read().split(",")
+    result.__delitem__(-1)
+    result = list(map(float, result))
+    file = open("perf_rand_2.txt", "r")
+    result2 = file.read().split(",")
+    result2.__delitem__(-1)
+    result2 = list(map(float, result2))
+    file = open("perf_rand_3.txt", "r")
+    result3 = file.read().split(",")
+    result3.__delitem__(-1)
+    result3 = list(map(float, result3))
+    print(len(result))
+    res = [result, result2, result3]
+    plt.hist(res, range=(0, 0.7), rwidth=0.5, density=True)
+    plt.legend(["rand_1", "rand_2", "rand_3"])
+    plt.show()
 
 
 

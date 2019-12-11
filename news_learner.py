@@ -4,6 +4,7 @@ import scipy.optimize as opt
 import time as time
 from ads_news import *
 from pulp import *
+from tqdm import tqdm
 
 
 class NewsLearner:
@@ -81,6 +82,10 @@ class NewsLearner:
             row[initial_index:initial_index + self.layout_slots] = [1] * self.layout_slots
             self.A.append(row.copy())
             initial_index += self.layout_slots
+
+        self.rand_1_errors = []
+        self.rand_2_errors = []
+        self.rand_3_errors = []
 
     # Returns a TS-sample for category k, either with standard TS approach or PBM approach
     def sample_quality(self, news, user, approach="standard", interest_decay=False):
@@ -354,6 +359,32 @@ class NewsLearner:
         # TODO
         category_index = self.categories.index(news.news_category)
 
+    def measure_allocation_diversity_bounds_errors(self, slots_assegnation_probabilities, LP_news_pool):
+        for tech in ["rand_1", "rand_2", "rand_3"]:
+            max_errors_per_iter = []
+            for k in range(5000):
+                tmp_slots_assegnation_probabilities = []
+                for elem in slots_assegnation_probabilities:
+                    tmp_slots_assegnation_probabilities.append(elem.copy())
+                constraints_error = [0] * len(self.categories)
+                promenance_per_category = [0] * len(self.categories)
+                result = self.de_randomize_LP(LP_news_pool, tmp_slots_assegnation_probabilities, tech)
+                for i in range(len(result)):
+                    category_index = self.categories.index(result[i].news_category)
+                    promenance_per_category[category_index] += self.real_slot_promenances[i]
+
+                for i in range(len(promenance_per_category)):
+                    if promenance_per_category[i] < self.B[i] * -1:
+                        constraints_error[i] += (self.B[i] * -1 - promenance_per_category[i]) / (self.B[i] * -1)
+
+                max_errors_per_iter.append(np.max(constraints_error))
+            if tech == "rand_1":
+                self.rand_1_errors += max_errors_per_iter
+            elif tech == "rand_2":
+                self.rand_2_errors += max_errors_per_iter
+            else:
+                self.rand_3_errors += max_errors_per_iter
+
     def solve_linear_problem(self, continuity_relaxation=True):
 
         result = [0] * self.layout_slots
@@ -393,37 +424,8 @@ class NewsLearner:
                 tmp_slot_probabilities.clear()
                 slot_counter += 1
 
-            tmp_slot_promenances = self.real_slot_promenances.copy()
-            feasible_news = [i for i in range(len(LP_news_pool))]
-            slot_counter = 0
-            allocated_slots = []
-            while slot_counter < self.layout_slots:
-                if (self.lp_rand_tech == "rand_1") or (self.lp_rand_tech == "rand_3"):
-                    target_slot = np.argmax(tmp_slot_promenances)
-                else:
-                    tmp_slot_promenance_norm = list(np.array(tmp_slot_promenances) / sum(tmp_slot_promenances))
-                    target_slot_promenance = np.random.choice(tmp_slot_promenances, p=tmp_slot_promenance_norm)
-                    target_slot = tmp_slot_promenances.index(target_slot_promenance)
+            result = self.de_randomize_LP(LP_news_pool, slots_assegnation_probabilities, self.lp_rand_tech)
 
-                target_slot_assegnation_probabilities = slots_assegnation_probabilities[int(target_slot)]
-                if self.lp_rand_tech == "rand_3":
-                    for p in range(len(slots_assegnation_probabilities)):
-                        if (p not in allocated_slots) and (p != target_slot):
-                            target_slot_assegnation_probabilities = \
-                                list(np.array(target_slot_assegnation_probabilities) *
-                                     (1 - np.array(slots_assegnation_probabilities[p])))
-                    allocated_slots.append(target_slot)
-
-                target_slot_assegnation_probabilities_norm = list(np.array(target_slot_assegnation_probabilities) /
-                                                                  sum(target_slot_assegnation_probabilities))
-                selected_news = np.random.choice(feasible_news, p=target_slot_assegnation_probabilities_norm)
-                result[int(target_slot)] = LP_news_pool[selected_news]
-                deletion_index = feasible_news.index(selected_news)
-                feasible_news.__delitem__(deletion_index)
-                for probs in slots_assegnation_probabilities:
-                    probs.__delitem__(deletion_index)
-                tmp_slot_promenances[int(target_slot)] = 0
-                slot_counter += 1
         else:
             LP = LpProblem("News_ILP", LpMaximize)
             LP_variables = []
@@ -467,9 +469,42 @@ class NewsLearner:
                 for k in elem:
                     if k.varValue > 0:
                         print(k.name, "=", k.varValue)
-                print("-----")
-            print(LpStatus[LP.status])
-            exit(4)
+        return result
+
+    def de_randomize_LP(self, LP_news_pool, tmp_slots_assignation_probabilities, de_rand_technique):
+        result = [0] * self.layout_slots
+        tmp_slot_promenances = self.real_slot_promenances.copy()
+        feasible_news = [i for i in range(len(LP_news_pool))]
+        slot_counter = 0
+        allocated_slots = []
+        while slot_counter < self.layout_slots:
+            if (de_rand_technique == "rand_1") or (de_rand_technique == "rand_3"):
+                target_slot = np.argmax(tmp_slot_promenances)
+            else:
+                tmp_slot_promenance_norm = list(np.array(tmp_slot_promenances) / sum(tmp_slot_promenances))
+                target_slot_promenance = np.random.choice(tmp_slot_promenances, p=tmp_slot_promenance_norm)
+                target_slot = tmp_slot_promenances.index(target_slot_promenance)
+
+            target_slot_assegnation_probabilities = tmp_slots_assignation_probabilities[int(target_slot)]
+            if de_rand_technique == "rand_3":
+                for p in range(len(tmp_slots_assignation_probabilities)):
+                    if (p not in allocated_slots) and (p != target_slot):
+                        target_slot_assegnation_probabilities = \
+                            list(np.array(target_slot_assegnation_probabilities) *
+                                 (1 - np.array(tmp_slots_assignation_probabilities[p])))
+                allocated_slots.append(target_slot)
+
+            target_slot_assegnation_probabilities_norm = list(np.array(target_slot_assegnation_probabilities) /
+                                                              sum(target_slot_assegnation_probabilities))
+            selected_news = np.random.choice(feasible_news, p=target_slot_assegnation_probabilities_norm)
+            result[int(target_slot)] = LP_news_pool[selected_news]
+            deletion_index = feasible_news.index(selected_news)
+            feasible_news.__delitem__(deletion_index)
+            for probs in tmp_slots_assignation_probabilities:
+                probs.__delitem__(deletion_index)
+            tmp_slot_promenances[int(target_slot)] = 0
+            slot_counter += 1
+
         return result
 
 
