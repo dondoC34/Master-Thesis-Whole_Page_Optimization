@@ -9,9 +9,6 @@ from tqdm import tqdm
 
 class NewsLearner:
 
-    # Category and Layout slots for direct user interactions,
-    # Real slot promenances for syntethic user interactions
-
     def __init__(self, categories=[], layout_slots=10, real_slot_promenances=[], news_column_pivot=[0.01, 1],
                  news_row_pivot=[1], allocation_approach="standard",
                  allocation_diversity_bounds=(0.1, 0.1, 0.1, 0.1, 0.1, 0.1), lp_rand_technique="rand_1"):
@@ -49,7 +46,15 @@ class NewsLearner:
         self.bounds = [(0, 1)] * len(self.categories) * self.layout_slots * self.layout_slots
         self.lambdas = []
         self.C = []
+        self.rand_1_errors = []
+        self.rand_2_errors = []
+        self.rand_3_errors = []
         self.lp_rand_tech = lp_rand_technique
+        """
+        In the following, the proper initializations for the matrices and the vectors for the LP approach are done.
+        Only a small subset of news will be considered to be allocated with the linear problem. In particular, the 
+        number of considered news is (num_of_category) * (num_of_slots_of_a_page)
+        """
         for _ in range(len(self.categories) * self.layout_slots):
             self.lambdas += list(np.array(self.real_slot_promenances) * -1)
         # Category connstraints creation and insertion into matrix A
@@ -83,13 +88,16 @@ class NewsLearner:
             self.A.append(row.copy())
             initial_index += self.layout_slots
 
-        self.rand_1_errors = []
-        self.rand_2_errors = []
-        self.rand_3_errors = []
-
-    # Returns a TS-sample for category k, either with standard TS approach or PBM approach
     def sample_quality(self, news, user, approach="standard", interest_decay=False):
-
+        """
+        Returns a sample for the proper weighted beta distribution
+        :param news: The news for which we want a sample describing the probability the user clicks it
+        :param user: The user itself
+        :param approach: Use position_based_model", ignore the rest for now
+        :param interest_decay: Whether to consider if the user already clicked the news or whether it has already seen
+        it etc. If so, returns a sample from the corresponding beta, otherwise froma fixed beta.
+        :return: A sample from a proper beta distribution considering the category of the news passed as parameter
+        """
         category = news.news_category
         if approach == "standard":
 
@@ -98,27 +106,42 @@ class NewsLearner:
         elif approach == "position_based_model":
 
             if interest_decay:
-                slot_promenance_cumsum = next((x[1] for x in user.last_news_in_allocation if x[0] == news), 0)
-                total_num_of_clicks = next((x[1] for x in user.last_news_clicked if x[0] == news), 0)
-
-                if slot_promenance_cumsum < self.news_column_pivots[-1]:
-                    k = 0
-                    while slot_promenance_cumsum >= self.news_column_pivots[k]:
-                        k += 1
-                    weighted_beta_matrix_posy = k
-                else:
-                    weighted_beta_matrix_posy = len(self.news_column_pivots)
-
-                if total_num_of_clicks < self.news_row_pivots[-1]:
-                    k = 0
-                    while total_num_of_clicks >= self.news_row_pivots[k]:
-                        k += 1
-                    weighted_beta_matrix_posx = k
-                else:
-                    weighted_beta_matrix_posx = len(self.news_row_pivots)
+                # Determines which beta to pull from:
+                weighted_beta_matrix_posx, weighted_beta_matrix_posy = self.compute_position_in_learning_matrix(user,
+                                                                                                                news)
                 news.set_sampled_quality(value=self.weighted_betas_matrix[weighted_beta_matrix_posx][weighted_beta_matrix_posy].sample(category=category))
             else:
+                # Pulls from a fixed beta otherwise
                 news.set_sampled_quality(value=self.weighted_betas_matrix[0][0].sample(category=category))
+
+    def compute_position_in_learning_matrix(self, user, news):
+        """
+        Observing the number of time the news has been allocated for user and the number of times the user already
+        clicked the news, computes the position in the matrix of the corresponding weighted beta distribution
+        :param user: The user itself
+        :param news: The news itself
+        :return: The coordinates of the corresponding beta in the weighted beta matrix
+        """
+        slot_promenance_cumsum = next((x[1] for x in user.last_news_in_allocation if x[0] == news), 0)
+        total_num_of_clicks = next((x[1] for x in user.last_news_clicked if x[0] == news), 0)
+
+        if slot_promenance_cumsum < self.news_column_pivots[-1]:
+            k = 0
+            while slot_promenance_cumsum >= self.news_column_pivots[k]:
+                k += 1
+            weighted_beta_matrix_posy = k
+        else:
+            weighted_beta_matrix_posy = len(self.news_column_pivots)
+
+        if total_num_of_clicks < self.news_row_pivots[-1]:
+            k = 0
+            while total_num_of_clicks >= self.news_row_pivots[k]:
+                k += 1
+            weighted_beta_matrix_posx = k
+        else:
+            weighted_beta_matrix_posx = len(self.news_row_pivots)
+
+        return weighted_beta_matrix_posx, weighted_beta_matrix_posy
 
     # Returns a TS- sample or a real value for the slot promenance of the slot k (k=-1 for all the slots)
     def sample_promenance(self, slot=-1, use_real_value=True):
@@ -146,7 +169,16 @@ class NewsLearner:
 
     # Collect a positive / negative reward for the news(s) k click allocated in slot i(s)
     def news_click(self, news, user, clicked=True, slot_nr=[], interest_decay=False):
-
+        """
+        Communicates (update the parameters) to the corresponding weighted beta distribution that a news has been
+        clicked.
+        :param news: The clicked news
+        :param user: The user that clicked
+        :param clicked: If the news has been clicked (always yes is this application)
+        :param slot_nr: The slot in which the news has been clicked
+        :param interest_decay: Determines whether to communicate to the corresponding beta or to a fixed beta
+        :return: Nothing
+        """
         if clicked:
             i = 0
             for content in news:
@@ -154,31 +186,17 @@ class NewsLearner:
                 self.quality_parameters[category_index][0] += 1
                 if len(slot_nr) > 0:
                     if interest_decay:
-                        slot_promenance_cumsum = next((x[1] for x in user.last_news_in_allocation if x[0] == content), 0)
-                        total_num_of_clicks = next((x[1] for x in user.last_news_clicked if x[0] == content), 0)
-
-                        if slot_promenance_cumsum < self.news_column_pivots[-1]:
-                            k = 0
-                            while slot_promenance_cumsum >= self.news_column_pivots[k]:
-                                k += 1
-                            weighted_beta_matrix_posy = k
-                        else:
-                            weighted_beta_matrix_posy = len(self.news_column_pivots)
-
-                        if total_num_of_clicks < self.news_row_pivots[-1]:
-                            k = 0
-                            while total_num_of_clicks >= self.news_row_pivots[k]:
-                                k += 1
-                            weighted_beta_matrix_posx = k
-                        else:
-                            weighted_beta_matrix_posx = len(self.news_row_pivots)
-
+                        # Computes the coordinates of the corresponding weighted beta dist. in the weighted beta matrix
+                        weighted_beta_matrix_posx, weighted_beta_matrix_posy = self.compute_position_in_learning_matrix(user,
+                                                                                                                        content)
                         self.weighted_betas_matrix[weighted_beta_matrix_posx][weighted_beta_matrix_posy].news_click(content, slot_nr[i])
                         alloc_index = next((x[3] for x in user.last_news_in_allocation if x[0] == content), -1)
                         click_index = next((x[3] for x in user.last_news_clicked if x[0] == content), -1)
+                        # Update with the values of the temporary variables
                         user.last_news_in_allocation[alloc_index][1] = user.last_news_in_allocation[alloc_index][2]
                         user.last_news_clicked[click_index][1] = user.last_news_clicked[click_index][2]
                     else:
+                        # Otherwise update a fixed weighted beta matrix
                         self.weighted_betas_matrix[0][0].news_click(content, slot_nr[i])
                     i += 1
         else:
@@ -186,11 +204,26 @@ class NewsLearner:
                 index = self.categories.index(content.news_category)
                 self.quality_parameters[index][1] += 1
 
-    # Given the knowledge of quality and promencances parameters up to now, tries to find the best allocation
-    # by start allocating more promising news in more promenant slots
-    def find_best_allocation(self, user, interest_decay=False, update_assignment_matrices=True):
+    def find_best_allocation(self, user, interest_decay=False, continuity_relaxation=True,
+                             update_assignment_matrices=True):
+        """
+        For each news in the news pool set a news sample pulled from the corresponding beta distributions.
+        Allocates the best news by adopting either the classic standard allocation approach (allocate best news starting
+        from best slots) or the LP allocation approach, that makes use of a linear problem to solve the task. The
+        linear problem approach takes into account also the variety of a page, making sure to give to each category
+        a percentage of the total slot promenance of the page.
+        :param user: The user to which we are presenting the page.
+        :param interest_decay: Whether to pull from the corresponding weighted beta distribution or to pull from a fixed
+        weighted beta distribution.
+        :param continuity_relaxation: In case of linear problem approach, this variable discriminates between the
+        continuity relaxation of the problem's variables, of to use binary variable (btw this option increases the
+        complexity of the resolution, since it can be seen as an NP complete problem)
+        :param update_assignment_matrices: Whether to update the corresponding weighted beta distribution with the
+        performed allocations. Useful to be False only in case of testing the performances of a trained model.
+        :return: A list of news corresponding to the allocation in the page. The order of the news in the list
+        correspond to the order of the slots in which the news are allocated.
+        """
         result_news_allocation = [0] * self.layout_slots
-
         for news in self.news_pool:
             self.sample_quality(news=news, user=user, approach="position_based_model", interest_decay=interest_decay)
 
@@ -206,40 +239,28 @@ class NewsLearner:
                 slot_promenances[int(target_slot_index)] = -1
 
         elif self.allocation_approach == "LP":
-            result_news_allocation = self.solve_linear_problem(continuity_relaxation=True)
+            result_news_allocation = self.solve_linear_problem(continuity_relaxation=continuity_relaxation)
 
         else:
             raise RuntimeError("Allocation approach not recognized.")
 
         if update_assignment_matrices:
+            # Update weighted betas parameters with the allocation results:
             for i in range(len(result_news_allocation)):
                 if interest_decay:
-                    slot_promenance_cumsum = next((x[1] for x in user.last_news_in_allocation if x[0] == result_news_allocation[i]), 0)
-                    total_num_of_clicks = next((x[1] for x in user.last_news_clicked if x[0] == result_news_allocation[i]), 0)
-
-                    if slot_promenance_cumsum < self.news_column_pivots[-1]:
-                        k = 0
-                        while slot_promenance_cumsum >= self.news_column_pivots[k]:
-                            k += 1
-                        weighted_beta_matrix_posy = k
-                    else:
-                        weighted_beta_matrix_posy = len(self.news_column_pivots)
-
-                    if total_num_of_clicks < self.news_row_pivots[-1]:
-                        k = 0
-                        while total_num_of_clicks >= self.news_row_pivots[k]:
-                            k += 1
-                        weighted_beta_matrix_posx = k
-                    else:
-                        weighted_beta_matrix_posx = len(self.news_row_pivots)
-
+                    weighted_beta_matrix_posx, weighted_beta_matrix_posy = self.compute_position_in_learning_matrix(user,
+                                                                                                                    result_news_allocation[i])
                     self.weighted_betas_matrix[weighted_beta_matrix_posx][weighted_beta_matrix_posy].news_allocation(result_news_allocation[i], i)
                     assigned_slot_promenance = self.real_slot_promenances[i]
+                    # In the following, save into the user "cookie" that the current news has been allocated for him.
+                    # If present, update the counter properly, if not a new entry is added.
                     index = next((x[3] for x in user.last_news_in_allocation if x[0] == result_news_allocation[i]), -1)
                     if index == -1:
+                        # Entry not found
                         user.last_news_in_allocation.append([result_news_allocation[i], 0, assigned_slot_promenance,
                                                              len(user.last_news_in_allocation)])
                     else:
+                        # Entry found
                         user.last_news_in_allocation[index][2] += assigned_slot_promenance
                 else:
                     self.weighted_betas_matrix[0][0].news_allocation(result_news_allocation[i], i)
@@ -248,14 +269,16 @@ class NewsLearner:
 
     # Adds news to the current pool
     def fill_news_pool(self, news_list, append=True):
-
-        news_per_category_count = [0] * len(self.categories)
+        """
+        Fills the news pool with a list of news. Always to be done before starting any process with this learner.
+        :param news_list: The list of news itself-
+        :param append: If true append each element of the list, otherwise copies the entire list
+        :return: Nothing.
+        """
         if append:
             for news in news_list:
                 self.news_pool.append(news)
                 index = self.categories.index(news.news_category)
-                news_per_category_count[index] += 1
-
         else:
             self.news_pool = news_list.copy()
 
@@ -265,9 +288,17 @@ class NewsLearner:
         for news in news_observed:
             self.last_news_observed.append(news.news_id)
 
-    # When a user arrives, finds an allocation for that user by exploiting the knowledge accumulated so far, then
-    # simulates the users interactions with the proposed page and collects the information
     def user_arrival(self, user, interest_decay=False):
+        """
+        This method defines the procedure to be adopted when a user interacts with the site (and then with the learner).
+        First finds the best page allocation for that user, by using a fixed or corresponding beta distributions.
+        Collect then the user interactions with the page and update the corresponding beta distributions.
+        Collect also the average quality of the page depending on the user tastes and the number of received clicks.
+        :param user: The user itself
+        :param interest_decay: Whether to pull from the corresponding weighted beta distribution or to pull from a fixed
+        weighted beta distribution.
+        :return: Nothing.
+        """
         allocation = self.find_best_allocation(user=user, interest_decay=interest_decay)
         user_observation_probabilities = user.observation_probabilities(self.real_slot_promenances)
         arm_rewards = []
@@ -289,6 +320,13 @@ class NewsLearner:
         # self.click_per_page.append(page_clicks)
 
     def save_weighted_beta_matrices(self, desinence):
+        """
+        Saves in .txt files the content of all the weighted beta distribution present in the weighted beta matrix.
+        Add a specific desinence to the file name in order to distinguish different learning matrices from different
+        learners
+        :param desinence: The desinence itself
+        :return: Nothing
+        """
         for i in range(len(self.weighted_betas_matrix)):
             for j in range(len(self.weighted_betas_matrix[i])):
                 file = open("Weighted_Beta_" + str(i) + "_" + str(j) + "_reward_" + desinence + ".txt", "w")
@@ -307,35 +345,22 @@ class NewsLearner:
                 file.close()
 
     def insert_into_news_pool(self, news):
+        """
+        Add a news into the news pool.
+        :param news: The news itself
+        :return: Nothing
+        """
+        self.news_pool.append(news)
 
-        category_index = self.categories.index(news.news_category)
-        for i in range(len(self.news_pool)):
-            if self.news_pool[i].news_category == news.news_category:
-                self.news_pool.insert(i + 1, news)
-
-        if self.allocation_approach == "LP":
-            # Update of the category constraints in matrix A due to the new news
-            for i in range(len(self.categories)):
-                if (i != len(self.categories) - 1) and (i != category_index):
-                    self.A[i] += [0] * len(self.real_slot_promenances)
-                elif (i == len(self.categories) - 1) and (i != category_index):
-                    self.A[i] = [0] * len(self.real_slot_promenances) + self.A[i]
-                else:
-                    block_to_be_inserted = list(np.array(self.real_slot_promenances) * -1)
-                    for j in range(len(self.A[i])):
-                        if self.A[i][j] != 0:
-                            break
-                    self.A[i] = self.A[i][0:j] + block_to_be_inserted + self.A[i][j:len(self.A[i])]
-
-            # Update of the slot's capacity constraints in matrix A due to the new news
-            for i in range(len(self.categories), len(self.A)):
-                target_index = i - len(self.categories)
-                block_to_be_inserted = [0] * self.layout_slots
-                block_to_be_inserted[target_index] = 1
-                self.A[i] += block_to_be_inserted
-
-    def read_weighted_beta_matrix_from_file(self, indexes, desinences, folder="Trained_betas_matrices"):
-
+    def read_weighted_beta_matrix_from_file(self, indexes, desinences, folder="Trained_betas_matrices/"):
+        """
+        Read the parameters of some weighted beta distribution from file. In particular, the wheighted betas that are
+        going to be read are the ones in the matrix specified by the indexes touples present in the parameter "indexes".
+        :param indexes: List of touples containing the indexes of the weighted beta distribution to be read from file
+        :param desinences: A specific desinence of the file we are reading from
+        :param folder: An eventual folder in which the files are contained. Specify "/" at the end of the folder name.
+        :return: Nothing.
+        """
         for i in range(len(indexes)):
             matrix = []
             file = open(folder + "Weighted_Beta_" + str(indexes[i][0]) + "_" + str(indexes[i][1]) + "_assignment_" +
@@ -356,13 +381,28 @@ class NewsLearner:
             self.weighted_betas_matrix[indexes[i][0]][indexes[i][1]].category_per_slot_reward_count = matrix.copy()
 
     def remove_news_from_pool(self, news):
-        # TODO
-        category_index = self.categories.index(news.news_category)
+        """
+        Remove target news from the news pool.
+        :param news: The news itself.
+        :return: Nothing.
+        """
+        index = self.news_pool.index(news)
+        self.news_pool.__delitem__(index)
 
-    def measure_allocation_diversity_bounds_errors(self, slots_assegnation_probabilities, LP_news_pool):
+    def measure_allocation_diversity_bounds_errors(self, slots_assegnation_probabilities, LP_news_pool, iter=5000):
+        """
+        This method only checks and collect data about how good are the three possible de-randomization techniques in
+        respecting the diversity bounds formulated in the LP (with continuity relaxation). The data are collected by
+        running "iter" number of derandomizations and are saved in the class attributes: "rand_1_errors",
+        "rand_2_errors" and "rand_3_errors". The single error per derandomization is quantified as the mximum
+        percentage of displacement bewteen the required and presented promenance per category.
+        :param slots_assegnation_probabilities: The randomized solution of a LP.
+        :param LP_news_pool: The restricted news pool used by the LP.
+        :return: Nothing.
+        """
         for tech in ["rand_1", "rand_2", "rand_3"]:
             max_errors_per_iter = []
-            for k in range(5000):
+            for k in range(iter):
                 tmp_slots_assegnation_probabilities = []
                 for elem in slots_assegnation_probabilities:
                     tmp_slots_assegnation_probabilities.append(elem.copy())
@@ -386,15 +426,30 @@ class NewsLearner:
                 self.rand_3_errors += max_errors_per_iter
 
     def solve_linear_problem(self, continuity_relaxation=True):
-
+        """
+        Solve a linear problem to find the best allocation for the current page.
+        First selects a subset of "num_of_slots" news for each category.
+        If there are not at least "num_of_slots" news for each category random news from the news pool will be chosen.
+        this will lead the solution to be significantly worse. In real scenarios this case will never happen.
+        Using the selected news solves the linear problem either with continuity relaxation of the variable or without
+        it.
+        :param continuity_relaxation: Whether to use an LP approach or an ILP approach.
+        :return: A randomized solution for the LP or the integer solution of the ILP.
+        """
         result = [0] * self.layout_slots
         self.news_pool.sort(key=lambda x: (x.news_category, x.sampled_quality), reverse=True)
         LP_news_pool = []
         done_for_category = False
         category_count = 0
         prev_category = self.news_pool[0].news_category
+        # First build a subset of news to easily handle the LP resolution
         for news in self.news_pool:
             if prev_category != news.news_category:
+                if category_count < self.layout_slots:
+                    raise RuntimeWarning("Not enough news per category found. There should be at least " +
+                                         str(self.layout_slots) + " news with category = " + prev_category + ", but "
+                                         "only " + str(category_count) + "are present. The allocation maybe "
+                                                                         "sub-optimal.")
                 category_count = 0
                 done_for_category = False
                 prev_category = news.news_category
@@ -404,12 +459,20 @@ class NewsLearner:
             if category_count == self.layout_slots:
                 done_for_category = True
 
+        # If not all the required news are present, add some other news at random.
+        while len(LP_news_pool) < len(self.categories) * self.layout_slots:
+            random_news = np.random.choice(self.news_pool)
+            if random_news not in LP_news_pool:
+                LP_news_pool.append(random_news)
+
         LP_news_pool.sort(key=lambda x: x.news_category, reverse=False)
         thetas = []
+        # Compute the vector of coefficients for the LP objective function
         for news in LP_news_pool:
             thetas += [news.sampled_quality] * self.layout_slots
         self.C = list(np.array(thetas) * np.array(self.lambdas))
 
+        # Then solve an LP or an ILP
         if continuity_relaxation:
             linear_problem = opt.linprog(A_ub=self.A, b_ub=self.B, c=self.C)
             slots_assegnation_probabilities = []
@@ -427,39 +490,39 @@ class NewsLearner:
             result = self.de_randomize_LP(LP_news_pool, slots_assegnation_probabilities, self.lp_rand_tech)
 
         else:
-            LP = LpProblem("News_ILP", LpMaximize)
-            LP_variables = []
+            ILP = LpProblem("News_ILP", LpMaximize)
+            ILP_variables = []
 
             for cat in range(len(self.categories)):
                 for j in range(self.layout_slots):
                     for s in range(self.layout_slots):
-                        LP_variables.append(LpVariable(name=str(cat) + "-" + str(j) + "-" + str(s), lowBound=0, upBound=1, cat="Binary"))
+                        ILP_variables.append(LpVariable(name=str(cat) + "-" + str(j) + "-" + str(s), lowBound=0, upBound=1, cat="Binary"))
 
             # Objective function addition to the problem
             C = list(np.array(self.C) * -1)
-            LP += lpSum([C[i] * LP_variables[i] for i in range(len(self.C))])
+            ILP += lpSum([C[i] * ILP_variables[i] for i in range(len(self.C))])
 
             # Category constraints addition to the problem
             for i in range(len(self.categories)):
-                LP += lpSum([self.A[i][j] * LP_variables[j] for j in range(len(self.C))]) <= self.B[i]
+                ILP += lpSum([self.A[i][j] * ILP_variables[j] for j in range(len(self.C))]) <= self.B[i]
 
             # Slots capacity constraints addition to the problem
             for i in range(len(self.categories), len(self.categories) + self.layout_slots):
-                LP += lpSum([self.A[i][j] * LP_variables[j] for j in range(len(self.C))]) <= self.B[i]
+                ILP += lpSum([self.A[i][j] * ILP_variables[j] for j in range(len(self.C))]) <= self.B[i]
 
             # News capacity constraints addition to the problem
             for i in range(len(self.categories) + self.layout_slots, len(self.categories) + self.layout_slots + len(self.categories) * self.layout_slots):
-                LP += lpSum([self.A[i][j] * LP_variables[j] for j in range(len(self.C))]) <= self.B[i]
+                ILP += lpSum([self.A[i][j] * ILP_variables[j] for j in range(len(self.C))]) <= self.B[i]
 
-            LP.solve()
+            ILP.solve()
 
             slots_assegnation_probabilities = []
             slot_counter = 0
             tmp_slot_probabilities = []
             while slot_counter < self.layout_slots:
                 i = slot_counter
-                while i < len(LP.variables()):
-                    tmp_slot_probabilities.append(LP.variables().__getitem__(i))
+                while i < len(ILP.variables()):
+                    tmp_slot_probabilities.append(ILP.variables().__getitem__(i))
                     i += self.layout_slots
                 slots_assegnation_probabilities.append(tmp_slot_probabilities.copy())
                 tmp_slot_probabilities.clear()
@@ -469,9 +532,19 @@ class NewsLearner:
                 for k in elem:
                     if k.varValue > 0:
                         print(k.name, "=", k.varValue)
+            # TODO
         return result
 
     def de_randomize_LP(self, LP_news_pool, tmp_slots_assignation_probabilities, de_rand_technique):
+        """
+        Given a randomized solution provided by a LP or an ILP, provide a derandomization, finding then the actual
+        allocation of the page. The de-randomization techniques that can be used are "rand_1", "rand_2" and "rand_3".
+        :param LP_news_pool: The subset of news used by the linear problem.
+        :param tmp_slots_assignation_probabilities: The randomized solution provided by the LP or ILP.
+        :param de_rand_technique: the derandomization technique itself.
+        :return: A list of news corresponding to the allocation in the page. The order of the news in the list
+        correspond to the order of the slots in which the news are allocated.
+        """
         result = [0] * self.layout_slots
         tmp_slot_promenances = self.real_slot_promenances.copy()
         feasible_news = [i for i in range(len(LP_news_pool))]
@@ -479,8 +552,10 @@ class NewsLearner:
         allocated_slots = []
         while slot_counter < self.layout_slots:
             if (de_rand_technique == "rand_1") or (de_rand_technique == "rand_3"):
+                # Start from the best slot
                 target_slot = np.argmax(tmp_slot_promenances)
             else:
+                # Start from slot j with probability proportional to j's slot promenance
                 tmp_slot_promenance_norm = list(np.array(tmp_slot_promenances) / sum(tmp_slot_promenances))
                 target_slot_promenance = np.random.choice(tmp_slot_promenances, p=tmp_slot_promenance_norm)
                 target_slot = tmp_slot_promenances.index(target_slot_promenance)
@@ -494,9 +569,12 @@ class NewsLearner:
                                  (1 - np.array(tmp_slots_assignation_probabilities[p])))
                 allocated_slots.append(target_slot)
 
+            # Normalize the vector of the variable assigning to the target slot
             target_slot_assegnation_probabilities_norm = list(np.array(target_slot_assegnation_probabilities) /
                                                               sum(target_slot_assegnation_probabilities))
+            # Choose the allocating news with probability proportional to the values of the variables
             selected_news = np.random.choice(feasible_news, p=target_slot_assegnation_probabilities_norm)
+            # Insert the winner news in the allocation and repeat after removing the variables.
             result[int(target_slot)] = LP_news_pool[selected_news]
             deletion_index = feasible_news.index(selected_news)
             feasible_news.__delitem__(deletion_index)
@@ -534,26 +612,13 @@ if __name__ == "__main__":
 
         a.fill_news_pool(news_list=news_pool, append=True)
         a.find_best_allocation(u)
+        # We simulate 300 interactions for this user
         for i in range(300):
             print(i)
-            a.user_arrival(u, interest_decay=False)  # we simulate 200 interactions per user
+            a.user_arrival(u, interest_decay=False)
         result.append(a.multiple_arms_avg_reward)
         click_result.append(a.click_per_page)
-        if exp == 0:
-            a.weighted_betas_matrix[0][0].plot_distribution("politic")
-            a.weighted_betas_matrix[0][1].plot_distribution("politic")
-            a.weighted_betas_matrix[0][2].plot_distribution("politic")
-            print(a.weighted_betas_matrix[0][0].category_per_slot_reward_count)
-            print(a.weighted_betas_matrix[0][0].category_per_slot_assignment_count)
-            print("--------------------------")
-            print(a.weighted_betas_matrix[0][1].category_per_slot_reward_count)
-            print(a.weighted_betas_matrix[0][1].category_per_slot_assignment_count)
-            print("--------------------------")
-            print(a.weighted_betas_matrix[1][2].category_per_slot_reward_count)
-            print(a.weighted_betas_matrix[1][2].category_per_slot_assignment_count)
-            print(u.last_news_clicked)
         exp += 1
-        a.save_weighted_beta_matrices(desinence="ciaoo")
 
     # plt.plot(np.mean(result, axis=0))
     # plt.title("Reward - " + str(u.user_quality_measure))
