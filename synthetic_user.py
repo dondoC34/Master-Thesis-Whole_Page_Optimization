@@ -57,10 +57,13 @@ class SyntheticUser:
         age_index = age_classes.index(self.age_slot)
         genre_index = genre_classes.index(self.genre)
 
+        # THE VALUES ABOVE ARE USED TO CHOOSE THE PROBABLITY OF CLICK OF EACH USER, BASING ON THEIR ATTRIBUTES.
+        # SOME NOISE IS ADDED BY MEANS OF GAUSSIAN DISTRIBUTIONS.
         self.user_quality_measure = np.random.normal(np.mean([quality_per_age_values[age_index], quality_per_genre_values[genre_index]], axis=0),
                                                      np.mean([quality_per_age_var[age_index], quality_per_genre_var[genre_index]], axis=0))
 
         for i in range(len(self.user_quality_measure)):
+            # EACH VALUE IS CLAMPED TO BE GREATER OF EQUAL THAN 0.1, AND LESS THEN OR EQUAL THAN 0.9
             value = np.min([0.9, np.max([0.1, self.user_quality_measure[i]])])
             self.user_quality_measure[i] = value
 

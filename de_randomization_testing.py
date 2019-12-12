@@ -141,7 +141,7 @@ if __name__ == "__main__":
         news_category_in_page = [0] * len(categories)
         allocation_rewards = []
         if i % 3 == 0:
-            allocation = learner_rand_1.find_best_allocation(user=user, update_assignment_matrices=False)
+            allocation = learner_rand_1.find_best_allocation(user=user, update_assignment_matrices=False, continuity_relaxation=False)
             allocations_count_rand_1 += 1
             for elem in allocation:
                 click, reward = user.click_news(elem)

@@ -306,9 +306,10 @@ class NewsLearner:
 
         for i in range(len(user_observation_probabilities)):
             outcome = np.random.binomial(1, user_observation_probabilities[i])
+            category_index = user.categories.index(allocation[i].news_category)
+            arm_rewards.append(user.user_quality_measure[category_index])
             if outcome == 1:
                 clicked, avg_reward = user.click_news(allocation[i], interest_decay=interest_decay)
-                arm_rewards.append(avg_reward)
                 if clicked == 1:
                     self.news_click(news=[allocation[i]], slot_nr=[i], interest_decay=interest_decay, user=user)
                     page_clicks += 1
@@ -316,8 +317,8 @@ class NewsLearner:
                 index = next((x[3] for x in user.last_news_in_allocation if x[0] == allocation[i]), -1)
                 user.last_news_in_allocation[index][1] = user.last_news_in_allocation[index][2]
 
-        # self.multiple_arms_avg_reward.append(np.mean(arm_rewards))
-        # self.click_per_page.append(page_clicks)
+        self.multiple_arms_avg_reward.append(np.mean(arm_rewards))
+        self.click_per_page.append(page_clicks)
 
     def save_weighted_beta_matrices(self, desinence):
         """
@@ -398,6 +399,7 @@ class NewsLearner:
         percentage of displacement bewteen the required and presented promenance per category.
         :param slots_assegnation_probabilities: The randomized solution of a LP.
         :param LP_news_pool: The restricted news pool used by the LP.
+        :param iter: Number of the derandomization performed for each technique
         :return: Nothing.
         """
         for tech in ["rand_1", "rand_2", "rand_3"]:
@@ -434,7 +436,8 @@ class NewsLearner:
         Using the selected news solves the linear problem either with continuity relaxation of the variable or without
         it.
         :param continuity_relaxation: Whether to use an LP approach or an ILP approach.
-        :return: A randomized solution for the LP or the integer solution of the ILP.
+        :return: A list of news corresponding to the allocation in the page. The order of the news in the list
+        correspond to the order of the slots in which the news are allocated.
         """
         result = [0] * self.layout_slots
         self.news_pool.sort(key=lambda x: (x.news_category, x.sampled_quality), reverse=True)
@@ -530,8 +533,9 @@ class NewsLearner:
 
             for elem in slots_assegnation_probabilities:
                 for k in elem:
-                    if k.varValue > 0:
-                        print(k.name, "=", k.varValue)
+                    print(k.name, "=", k.varValue)
+                print("-------")
+            exit(34)
             # TODO
         return result
 
@@ -620,14 +624,14 @@ if __name__ == "__main__":
         click_result.append(a.click_per_page)
         exp += 1
 
-    # plt.plot(np.mean(result, axis=0))
-    # plt.title("Reward - " + str(u.user_quality_measure))
-    # plt.show()
-    # plt.title("Regret - " + str(u.user_quality_measure))
-    # plt.plot(np.cumsum(np.max(u.user_quality_measure) - np.array(np.mean(result, axis=0))))
-    # plt.show()
-    # plt.title("Page Clicks - " + str(u.user_quality_measure))
-    # plt.plot(np.mean(click_result, axis=0))
-    # plt.show()
+    plt.plot(np.mean(result, axis=0))
+    plt.title("Reward - " + str(u.user_quality_measure))
+    plt.show()
+    plt.title("Regret - " + str(u.user_quality_measure))
+    plt.plot(np.cumsum(np.max(u.user_quality_measure) - np.array(np.mean(result, axis=0))))
+    plt.show()
+    plt.title("Page Clicks - " + str(u.user_quality_measure))
+    plt.plot(np.mean(click_result, axis=0))
+    plt.show()
 
 

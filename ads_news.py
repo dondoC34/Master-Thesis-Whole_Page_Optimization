@@ -1,6 +1,7 @@
 import scipy.optimize as opt
 import numpy as np
 
+
 class News:
 
     def __init__(self, news_id, news_name):
