@@ -12,9 +12,9 @@ def save_allocation_errors(learners_list):
     in the list has been called before.
     :return: nothing
     """
-    file = open("perf_rand_1.txt", "w")
-    file2 = open("perf_rand_2.txt", "w")
-    file3 = open("perf_rand_3.txt", "w")
+    file = open("perf_rand_1111.txt", "w")
+    file2 = open("perf_rand_2222.txt", "w")
+    file3 = open("perf_rand_3333.txt", "w")
     for learner in learners_list:
         if i % 3 == 1:
             file.write(str(learner.rand_1_errors[0]))
@@ -39,22 +39,41 @@ def plot_allocation_errors():
     Call only if the "save_allocation_errors" has been called in precedence and its output files have been saved.
     :return: Nothing
     """
-    file = open("perf_rand_1.txt", "r")
-    result = file.read().split(",")
-    result.__delitem__(-1)
-    result = list(map(float, result))
-    file = open("perf_rand_2.txt", "r")
-    result2 = file.read().split(",")
-    result2.__delitem__(-1)
-    result2 = list(map(float, result2))
-    file = open("perf_rand_3.txt", "r")
-    result3 = file.read().split(",")
-    result3.__delitem__(-1)
-    result3 = list(map(float, result3))
-    print(len(result))
-    res = [result, result2, result3]
-    plt.hist(res, range=(0, 0.7), rwidth=0.5, density=True)
-    plt.legend(["rand_1", "rand_2", "rand_3"])
+    final_result = []
+    final_result2 = []
+    final_result3 = []
+
+    for des in ["", "1", "11", "111"]:
+        file = open("perf_rand_1" + des + ".txt", "r")
+        result = file.read().split(",")
+        result.__delitem__(-1)
+        result = list(map(float, result))
+        final_result += result
+    file.close()
+
+    for des in ["", "2", "22", "222"]:
+        file = open("perf_rand_2" + des + ".txt", "r")
+        result2 = file.read().split(",")
+        result2.__delitem__(-1)
+        result2 = list(map(float, result2))
+        final_result2 += result2
+    file.close()
+
+    for des in ["", "3", "33", "333"]:
+        file = open("perf_rand_3" + des + ".txt", "r")
+        result3 = file.read().split(",")
+        result3.__delitem__(-1)
+        result3 = list(map(float, result3))
+        final_result3 += result3
+    file.close()
+    res = final_result
+    res2 = final_result2
+    res3 = final_result3
+    sns.distplot(res, hist=False)
+    sns.distplot(res2, hist=False)
+    sns.distplot(res3, hist=False)
+    plt.legend(labels=["a", "b", "c"])
+    plt.title("DeRandomization Mean Error Distribution")
     plt.show()
 
 
@@ -68,10 +87,10 @@ if __name__ == "__main__":
 
     real_slot_promenances = [0.7, 0.8, 0.7, 0.7, 0.6, 0.5, 0.5, 0.4, 0.3, 0.2]
     categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
-    diversity_percentage_for_category = 12.5
+    diversity_percentage_for_category = 1.5
     promenance_percentage_value = diversity_percentage_for_category / 100 * sum(real_slot_promenances)
     allocation_diversity_bounds = (promenance_percentage_value, promenance_percentage_value) * 3
-    iterations = 2000
+    iterations = 0
     user = SyntheticUser(23, "M", 35, "C")
     news_per_category = 100
     learner_rand_1 = NewsLearner(categories=categories, layout_slots=10,
@@ -122,18 +141,22 @@ if __name__ == "__main__":
     page_reward_rand_2 = []
     page_reward_rand_3 = []
     page_reward_standard = []
+    page_reward_ilp = []
     page_diversity_rand_1 = []
     page_diversity_rand_2 = []
     page_diversity_rand_3 = []
+    page_diversity_ilp = []
     page_diversity_standard = []
     allocated_promenance_per_category_rand_1 = [0] * len(categories)
     allocated_promenance_per_category_rand_2 = [0] * len(categories)
     allocated_promenance_per_category_rand_3 = [0] * len(categories)
     allocated_promenance_per_category_standard = [0] * len(categories)
+    allocated_promenance_per_category_ilp = [0] * len(categories)
     allocations_count_rand_1 = 0
     allocations_count_rand_2 = 0
     allocations_count_rand_3 = 0
     allocations_count_standard = 0
+    allocations_count_ilp = 0
 
     # FOR EACH LEARNER, ALLOCATE A PAGE THEN COLLECT THE MEASURES
     for i in tqdm(range(1, iterations + 1)):
@@ -141,7 +164,7 @@ if __name__ == "__main__":
         news_category_in_page = [0] * len(categories)
         allocation_rewards = []
         if i % 3 == 0:
-            allocation = learner_rand_1.find_best_allocation(user=user, update_assignment_matrices=False, continuity_relaxation=False)
+            allocation = learner_rand_1.find_best_allocation(user=user, update_assignment_matrices=False)
             allocations_count_rand_1 += 1
             for elem in allocation:
                 click, reward = user.click_news(elem)
@@ -180,6 +203,20 @@ if __name__ == "__main__":
 
             page_reward_standard.append(sum(np.array(allocation_rewards) * np.array(real_slot_promenances)))
             page_diversity_standard.append(sum(news_category_in_page))
+        elif i % 5 == 0:
+            allocation = learner_rand_2.find_best_allocation(user=user, update_assignment_matrices=False,
+                                                             continuity_relaxation=False)
+            allocations_count_ilp += 1
+            for elem in allocation:
+                click, reward = user.click_news(elem)
+                allocation_rewards.append(reward)
+                category_index = categories.index(elem.news_category)
+                news_category_in_page[category_index] = 1
+                news_slot = allocation.index(elem)
+                allocated_promenance_per_category_ilp[category_index] += real_slot_promenances[news_slot]
+
+            page_reward_ilp.append(sum(np.array(allocation_rewards) * np.array(real_slot_promenances)))
+            page_diversity_ilp.append(sum(news_category_in_page))
         else:
             allocation = learner_rand_3.find_best_allocation(user=user, update_assignment_matrices=False)
             allocations_count_rand_3 += 1
@@ -210,6 +247,10 @@ if __name__ == "__main__":
     print("Standard quality metrics:")
     print("Avg page reward: " + str(np.mean(page_reward_standard)))
     print("Avg page diversity: " + str(np.mean(page_diversity_standard)))
+    print("--------------------------------")
+    print("ILP allocation quality metrics:")
+    print("Avg page reward: " + str(np.mean(page_reward_ilp)))
+    print("Avg page diversity: " + str(np.mean(page_diversity_ilp)))
     print("--------------------------------")
     print("Allocation category lower bounds: " + str(allocation_diversity_bounds))
     print("Rand_1 Avg promenance per category: " + str(np.array(allocated_promenance_per_category_rand_1) * 1 / allocations_count_rand_1))

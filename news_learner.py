@@ -5,6 +5,7 @@ import time as time
 from ads_news import *
 from pulp import *
 from tqdm import tqdm
+import random
 
 
 class NewsLearner:
@@ -306,8 +307,7 @@ class NewsLearner:
 
         for i in range(len(user_observation_probabilities)):
             outcome = np.random.binomial(1, user_observation_probabilities[i])
-            category_index = user.categories.index(allocation[i].news_category)
-            arm_rewards.append(user.user_quality_measure[category_index])
+            arm_rewards.append(user.get_reward(allocation[i]))
             if outcome == 1:
                 clicked, avg_reward = user.click_news(allocation[i], interest_decay=interest_decay)
                 if clicked == 1:
@@ -381,14 +381,15 @@ class NewsLearner:
                 matrix.append(list(map(float, line_splitted)))
             self.weighted_betas_matrix[indexes[i][0]][indexes[i][1]].category_per_slot_reward_count = matrix.copy()
 
-    def remove_news_from_pool(self, news):
+    def remove_news_from_pool(self, news_list):
         """
-        Remove target news from the news pool.
-        :param news: The news itself.
+        Remove all the news present in the news_list from the news pool.
+        :param news_list: The news list itself.
         :return: Nothing.
         """
-        index = self.news_pool.index(news)
-        self.news_pool.__delitem__(index)
+        for i in range(-len(self.news_pool), 0):
+            if self.news_pool[i] in news_list:
+                self.news_pool.__delitem__(i)
 
     def measure_allocation_diversity_bounds_errors(self, slots_assegnation_probabilities, LP_news_pool, iter=5000):
         """
@@ -419,7 +420,7 @@ class NewsLearner:
                     if promenance_per_category[i] < self.B[i] * -1:
                         constraints_error[i] += (self.B[i] * -1 - promenance_per_category[i]) / (self.B[i] * -1)
 
-                max_errors_per_iter.append(np.max(constraints_error))
+                max_errors_per_iter.append(np.mean(constraints_error))
             if tech == "rand_1":
                 self.rand_1_errors += max_errors_per_iter
             elif tech == "rand_2":
@@ -490,16 +491,19 @@ class NewsLearner:
                 tmp_slot_probabilities.clear()
                 slot_counter += 1
 
+            self.measure_allocation_diversity_bounds_errors(slots_assegnation_probabilities, LP_news_pool, iter=10)
+
             result = self.de_randomize_LP(LP_news_pool, slots_assegnation_probabilities, self.lp_rand_tech)
 
         else:
+            # INITIALIZES AN INTEGER LINEAR PROBLEM
             ILP = LpProblem("News_ILP", LpMaximize)
             ILP_variables = []
 
             for cat in range(len(self.categories)):
                 for j in range(self.layout_slots):
                     for s in range(self.layout_slots):
-                        ILP_variables.append(LpVariable(name=str(cat) + "-" + str(j) + "-" + str(s), lowBound=0, upBound=1, cat="Binary"))
+                        ILP_variables.append(LpVariable(name=str(cat) + "_" + str(j) + "_" + str(s), lowBound=0, upBound=1, cat="Binary"))
 
             # Objective function addition to the problem
             C = list(np.array(self.C) * -1)
@@ -519,6 +523,7 @@ class NewsLearner:
 
             ILP.solve()
 
+            # FOR EACH SLOT, ISOLATES THE CORRESPONDING VARIABLES
             slots_assegnation_probabilities = []
             slot_counter = 0
             tmp_slot_probabilities = []
@@ -531,12 +536,18 @@ class NewsLearner:
                 tmp_slot_probabilities.clear()
                 slot_counter += 1
 
-            for elem in slots_assegnation_probabilities:
-                for k in elem:
-                    print(k.name, "=", k.varValue)
-                print("-------")
-            exit(34)
-            # TODO
+            # TAKES THE VARIABLES WHICH VALUE IS 1, THEN ALLOCATES THE CORRESPONDING NEWS IN THE RESULT PAGE
+            for i in range(len(result)):
+                for probabilities in slots_assegnation_probabilities[i]:
+                    if probabilities.varValue > 0:
+                        var_name = probabilities.name
+                        break
+                indexes = var_name.split("_")
+                category_index = int(indexes[0])
+                news_number = int(indexes[1])
+                news_index = category_index * self.layout_slots + news_number
+                result[i] = LP_news_pool[news_index]
+
         return result
 
     def de_randomize_LP(self, LP_news_pool, tmp_slots_assignation_probabilities, de_rand_technique):
@@ -596,7 +607,7 @@ if __name__ == "__main__":
     news_pool = []
     k = 0
     for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
-        for id in range(1, 100):
+        for id in range(1, 101):
             news_pool.append(News(news_id=k,
                                   news_name=category + "-" + str(id)))
             k += 1
@@ -604,25 +615,50 @@ if __name__ == "__main__":
     exp = 0
     result = []
     click_result = []
+    diversity_percentage_for_category = 5
+    real_slot_promenances = [0.7, 0.8, 0.4, 0.5, 0.3, 0.1]
+    promenance_percentage_value = diversity_percentage_for_category / 100 * sum(real_slot_promenances)
+    allocation_diversity_bounds = (promenance_percentage_value, promenance_percentage_value) * 3
 
     # Then we perform 100 experiments and use the collected data to plot the regrets and distributions
-    while exp < 1:
-        print("exp " + str(exp))
+    for k in tqdm(range(400)):
         # We create a user and set their quality metrics that we want to estimate
         u = SyntheticUser(23, "M", 27, "C")  # A male 27 years old user, that is transparent to slot promenances
-        u.user_quality_measure = [0.2, 0.3, 0.7, 0.2, 0.2, 0.4]
         a = NewsLearner(categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"], layout_slots=6,
-                        real_slot_promenances=[0.7, 0.8, 0.4, 0.5, 0.3, 0.1], allocation_approach="LP")
+                        real_slot_promenances=real_slot_promenances, allocation_approach="LP",
+                        allocation_diversity_bounds=allocation_diversity_bounds)
 
         a.fill_news_pool(news_list=news_pool, append=True)
-        a.find_best_allocation(u)
         # We simulate 300 interactions for this user
         for i in range(300):
-            print(i)
-            a.user_arrival(u, interest_decay=False)
+            a.user_arrival(u, interest_decay=True)
+
+            if i + 1 % 5 == 0:
+                # UPDATE NEWS POOL
+                random.shuffle(a.news_pool)
+                news_to_be_removed = []
+                for cat in["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
+                    news_count = 0
+                    for j in range(len(a.news_pool)):
+                        if a.news_pool[j].news_category == cat:
+                            news_to_be_removed.append(a.news_pool[j])
+                            news_count += 1
+                    if news_count == 3:
+                        break
+
+                a.remove_news_from_pool(news_to_be_removed)
+
+                for j in range(3):
+                    news_num = np.random.choice([index for index in range(100000)])
+                    a.insert_into_news_pool(News(news_num, "cibo-" + str(news_num)))
+                    a.insert_into_news_pool(News(news_num, "gossip-" + str(news_num)))
+                    a.insert_into_news_pool(News(news_num, "politic-" + str(news_num)))
+                    a.insert_into_news_pool(News(news_num, "scienza-" + str(news_num)))
+                    a.insert_into_news_pool(News(news_num, "sport-" + str(news_num)))
+                    a.insert_into_news_pool(News(news_num, "tech-" + str(news_num)))
+
         result.append(a.multiple_arms_avg_reward)
         click_result.append(a.click_per_page)
-        exp += 1
 
     plt.plot(np.mean(result, axis=0))
     plt.title("Reward - " + str(u.user_quality_measure))
@@ -633,5 +669,20 @@ if __name__ == "__main__":
     plt.title("Page Clicks - " + str(u.user_quality_measure))
     plt.plot(np.mean(click_result, axis=0))
     plt.show()
+    result = np.mean(result, axis=0)
+    click_result = np.mean(click_result, axis=0)
+    file = open("reward_decay_LP_frequentfrequent.txt", "w")
+    file.write(str(result[0]))
+    for i in range(1, len(result)):
+        file.write("," + str(result[i]))
+    file.close()
+    file = open("clicks_decay_LP_frequentfrequent.txt", "w")
+    file.write(str(click_result[0]))
+    for i in range(1, len(click_result)):
+        file.write("," + str(click_result[i]))
+    file.close()
+    print(a.weighted_betas_matrix[0][0].category_per_slot_assignment_count)
+    print(a.weighted_betas_matrix[1][2].category_per_slot_reward_count)
+    print(a.weighted_betas_matrix[1][2].category_per_slot_assignment_count)
 
 

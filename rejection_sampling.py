@@ -36,12 +36,16 @@ def rejection_sampling(iter=100000):
 
 if __name__ == "__main__":
 
-    def integrand(x, a, b):
-        return a * x ** 2 + b
-
-
-    a = 2
-    b = 1
-    I = quad(integrand, 0, 1, args=(a, b))
-    print(I)
-
+    file = open("clicks_decay_LP_frequentfrequent.txt")
+    res = file.read().split(",")
+    res = list(map(float, res))
+    file.close()
+    file = open("reward_decay_LP_frequentfrequent.txt")
+    res2 = file.read().split(",")
+    res2 = list(map(float, res2))
+    plt.plot(res, "r")
+    # plt.plot(res2)
+    plt.xlabel("Interaction Number")
+    plt.title("Average Page Clicks - Interest Decay - High Frequency User")
+    plt.legend(["LP Allocation"])
+    plt.show()

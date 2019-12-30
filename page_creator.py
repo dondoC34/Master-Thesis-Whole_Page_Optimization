@@ -20,7 +20,9 @@ class PageCreator:
                 attribute_row.append(NewsLearner(real_slot_promenances=real_slot_promenances,
                                                  layout_slots=layout_slots,
                                                  allocation_approach=allocation_approach,
-                                                 categories=categories))
+                                                 categories=categories,
+                                                 allocation_diversity_bounds=(0.3, 0.3, 0.3, 0.3, 0.3, 0.3),
+                                                 news_column_pivot=[0.01, 2]))
 
             self.learner_matrix.append(attribute_row.copy())
 
@@ -52,9 +54,9 @@ if __name__ == "__main__":
     user_genres = ["M", "F"]
     user_age = [j for j in range(10, 91)]
 
-    num_of_users = 30
+    num_of_users = 1000
     num_of_news_per_category = 400
-    num_of_interaction = 2000
+    num_of_interaction = 10000
 
     # USE WHICHEVER SLOT PROMENANCE VALUE, FEASIBLE OF COURSE (>0 AND <1)
     real_slot_promenances = [0.7, 0.8, 0.7, 0.7, 0.6, 0.5, 0.5, 0.4, 0.3, 0.2]
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     # SAVE THE TRAINED WEIGHTED BETAS MATRIX OF EACH LEARNER.
     for i in range(len(site.learner_matrix)):
         for j in range(len(site.learner_matrix[i])):
-            site.learner_matrix[i][j].save_weighted_beta_matrices(desinence=str(i) + "-" + str(j) + "de_rand_testing")
+            site.learner_matrix[i][j].save_weighted_beta_matrices(desinence=str(i) + "-" + str(j) + "test1_10kiter_1kusers")
 
 
 

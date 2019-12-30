@@ -12,6 +12,10 @@ class WeightedBetaDistribution:
         # TWO MATRICES TO COMPUTE THE WEIGHTED BETA FUNCTION GIVEN A CATEGORY
         self.category_per_slot_reward_count = np.zeros([len(self.categories), self.layout_slots])
         self.category_per_slot_assignment_count = np.zeros([len(self.categories), self.layout_slots])
+        self.category_sw = [False] * len(self.categories)
+        self.sample_per_category = []
+        for _ in range(len(self.categories)):
+            self.sample_per_category.append([])
 
         # WEIGHTS USED TO REDUCE THE PROPOSAL DISTRIBUTION AND TO AVOID THE REJECTION SAMPLING OPERATION
         # BEGIN SUBOPTIMAL
@@ -36,12 +40,15 @@ class WeightedBetaDistribution:
             if count % 30 == 0:
                 proposal_weight /= 10
 
-            if count == 300000:
-                print("cannot sample")
-                self.plot_distribution(category=category)
-                print(self.category_per_slot_assignment_count)
-                print("----")
-                print(self.category_per_slot_reward_count)
+            if count % 3000 == 0:
+                self.category_sw[category_index] = True
+                removed_sample = self.sample_per_category[category_index].pop(0)
+                self.category_per_slot_assignment_count[category_index][removed_sample[0]] -= 1
+                self.category_per_slot_reward_count[category_index][removed_sample[0]] -= removed_sample[1]
+                wb_pdf = self.get_weighted_beta_pdf(category=category)
+                wb_max_value = np.max(wb_pdf)
+                self.last_proposal_weights[category_index] = wb_max_value
+                proposal_weight = self.last_proposal_weights[category_index]
 
             x_proposal = self.__sample_uniform()
             y_proposal = self.__uniform_pdf(weight=30 * proposal_weight)
@@ -96,6 +103,11 @@ class WeightedBetaDistribution:
         """
         category_index = self.categories.index(news.news_category)
         self.category_per_slot_assignment_count[category_index][slot_index] += 1
+        self.sample_per_category[category_index].append([slot_index, 0])
+        if self.category_sw[category_index]:
+            removed_sample = self.sample_per_category[category_index].pop(0)
+            self.category_per_slot_assignment_count[category_index][removed_sample[0]] -= 1
+            self.category_per_slot_reward_count[category_index][removed_sample[0]] -= removed_sample[1]
 
     def news_click(self, news, slot_index):
         """
@@ -106,16 +118,35 @@ class WeightedBetaDistribution:
         """
         category_index = self.categories.index(news.news_category)
         self.category_per_slot_reward_count[category_index][slot_index] += 1
+        index = -1
+        while True:
+            if self.sample_per_category[category_index][index][0] == slot_index:
+                self.sample_per_category[category_index][index][1] = 1
+                break
+            index -= 1
 
-    def plot_distribution(self, category):
+    def plot_distribution(self, category, show=True, weight=1):
         """
         Plots the probability density function of the weighted beta distribution corresponding to the category parameter
         :param category: Used to choose the weighted beta pdf to be plotted.
+        :param show: Whether to show the distribution or not
         :return: Nothing.
         """
+        result_to_plot = self.get_weighted_beta_pdf(category=category)
+
+        plt.plot(result_to_plot, "g")
+        plt.xticks([0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+                   ["0", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1"])
+        plt.xlabel("X")
+        plt.ylabel("Weighted Beta Pdf")
+        plt.title(category + " Estimated Quality")
+        if show:
+            plt.show()
+
+    def get_weighted_beta_pdf(self, category):
         category_index = self.categories.index(category)
         result = 1
-        result_to_plot = []
+        final_result = []
         x_value = 0
         while x_value <= 1:
             for i in range(self.layout_slots):
@@ -124,15 +155,9 @@ class WeightedBetaDistribution:
                        self.category_per_slot_reward_count[category_index][i]
 
                 result *= x_value ** alpha * (1 - self.real_slot_promenances[i] * x_value) ** beta
-            result_to_plot.append(result)
+            final_result.append(result)
             result = 1
             x_value += 0.001
 
-        plt.plot(result_to_plot)
-        plt.xticks([0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-                   ["0", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1"])
-        plt.xlabel("X")
-        plt.ylabel("Weighted Beta Pdf")
-        plt.title(category + " Estimated Quality")
-        plt.show()
+        return final_result
 

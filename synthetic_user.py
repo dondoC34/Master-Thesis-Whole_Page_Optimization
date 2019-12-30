@@ -101,6 +101,14 @@ class SyntheticUser:
 
         return click, self.user_quality_measure[category_index]
 
+    def get_reward(self, news):
+        num_of_clicks = next((x[1] for x in self.last_news_clicked if x[0] == news), 0)
+        interest_decay_factor = np.exp(- num_of_clicks)
+        interest_decay_factor_2 = np.exp(- 0.5 * self.viewed_but_not_clicked_news.count(news))
+        category_index = self.categories.index(news.news_category)
+
+        return interest_decay_factor * interest_decay_factor_2 * self.user_quality_measure[category_index]
+
 
 # Given a file containing k users, creates a list with k user objects
 def read_users_from_file(filename):
