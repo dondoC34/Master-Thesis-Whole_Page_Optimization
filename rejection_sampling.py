@@ -3,6 +3,7 @@ import scipy.stats as st
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.integrate import quad
+import time as time
 
 """
 This python file is just a draft i used to perform rejection sampling before adding it in the learner
@@ -36,16 +37,6 @@ def rejection_sampling(iter=100000):
 
 if __name__ == "__main__":
 
-    file = open("clicks_decay_LP_frequentfrequent.txt")
-    res = file.read().split(",")
-    res = list(map(float, res))
-    file.close()
-    file = open("reward_decay_LP_frequentfrequent.txt")
-    res2 = file.read().split(",")
-    res2 = list(map(float, res2))
-    plt.plot(res, "r")
-    # plt.plot(res2)
-    plt.xlabel("Interaction Number")
-    plt.title("Average Page Clicks - Interest Decay - High Frequency User")
-    plt.legend(["LP Allocation"])
-    plt.show()
+    a = [[1, 2, 3], [5, 1, 3], [6, 4, 2], [7, 2, 5]]
+    a.sort(key=lambda x: x[2] * x[1], reverse=False)
+    print(a)

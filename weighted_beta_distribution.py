@@ -1,6 +1,7 @@
 import scipy.stats as stat
 import numpy as np
 import matplotlib.pyplot as plt
+from ads_news import *
 
 
 class WeightedBetaDistribution:
@@ -94,14 +95,17 @@ class WeightedBetaDistribution:
         """
         return np.random.uniform(0, 1)
 
-    def news_allocation(self, news, slot_index):
+    def allocation(self, news, slot_index):
         """
         Update the weighted beta matrix given a news allocation and the corresponding category.
         :param news: The news being allocated.
         :param slot_index: The slot in which the news is being allocated.
         :return: Nothing.
         """
-        category_index = self.categories.index(news.news_category)
+        if isinstance(news, News):
+            category_index = self.categories.index(news.news_category)
+        else:
+            category_index = self.categories.index(news.ad_category)
         self.category_per_slot_assignment_count[category_index][slot_index] += 1
         self.sample_per_category[category_index].append([slot_index, 0])
         if self.category_sw[category_index]:
@@ -109,21 +113,31 @@ class WeightedBetaDistribution:
             self.category_per_slot_assignment_count[category_index][removed_sample[0]] -= 1
             self.category_per_slot_reward_count[category_index][removed_sample[0]] -= removed_sample[1]
 
-    def news_click(self, news, slot_index):
+    def click(self, news, slot_index):
         """
         Update the weighted beta matrix given a news click and the corresponding category.
         :param news: The news being clicked.
         :param slot_index: The slot in which the news is being clicked.
         :return: Nothing.
         """
-        category_index = self.categories.index(news.news_category)
+        if isinstance(news, News):
+            category_index = self.categories.index(news.news_category)
+        else:
+            category_index = self.categories.index(news.ad_category)
         self.category_per_slot_reward_count[category_index][slot_index] += 1
-        index = -1
-        while True:
-            if self.sample_per_category[category_index][index][0] == slot_index:
-                self.sample_per_category[category_index][index][1] = 1
-                break
-            index -= 1
+        if isinstance(news, News):
+            index = -1
+            while True:
+                try:
+                    if self.sample_per_category[category_index][index][0] == slot_index:
+                        self.sample_per_category[category_index][index][1] = 1
+                        break
+                except IndexError:
+                    print(len(self.sample_per_category[category_index]))
+                    print(self.sample_per_category[category_index])
+                    print(self.category_sw[category_index])
+                    exit(45)
+                index -= 1
 
     def plot_distribution(self, category, show=True, weight=1):
         """
