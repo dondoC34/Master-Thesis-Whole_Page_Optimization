@@ -3,8 +3,10 @@ from news_learner import *
 from pulp import *
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.stats import t
+from pulp import *
 
-slot_number = 6
+slot_number = 10
 categories_number = 6
 categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
 age_classes = ["LOW", "MEDIUM", "HIGH"]
@@ -187,7 +189,7 @@ class SyntheticUser:
         return click
 
     def get_reward(self, news):
-        num_of_clicks = next((x[1] for x in self.last_news_clicked if x[0] == news), 0)
+        num_of_clicks = next((x[1] for x in self.last_news_clicked if x[0] == news.news_id), 0)
         interest_decay_factor = np.exp(- num_of_clicks)
         interest_decay_factor_2 = np.exp(- 0.5 * self.viewed_but_not_clicked_news.count(news))
         category_index = self.categories.index(news.news_category)
@@ -232,12 +234,86 @@ def write_random_users_in_file(filename, number_of_users):
 
 if __name__ == "__main__":
 
-    u = SyntheticUser(23, "M", 23, "C")
-    u.last_news_in_allocation.append([1, 2, 3])
-    u.last_news_in_allocation.append([4, 5, 6])
-    u.last_news_in_allocation.append([7, 8, 9])
-    n = News(5, "ciao")
-    print(u.get_promenance_cumsum(n, get_only_index=True))
+    slots = 2
+    elems = 3
+    result = [0, 0, 0]
+    t_results = []
+
+    for _ in range(1000):
+        LP = LpProblem("wee", LpMaximize)
+        obj_vetor = []
+
+        LP_variables = []
+
+        for i in range(elems):
+            for j in range(slots):
+                LP_variables.append(LpVariable(str(i) + "_" + str(j), lowBound=0, upBound=1))
+
+        for _ in range(elems):
+            obj_vetor += list(np.random.uniform(0, 1, size=slots))
+
+        LP += lpSum([LP_variables[i] * obj_vetor[i] for i in range(len(obj_vetor))])
+        LP += lpSum([LP_variables[0], LP_variables[2], LP_variables[4]]) <= 1
+        LP += lpSum([LP_variables[1], LP_variables[3], LP_variables[5]]) <= 1
+        LP += lpSum([LP_variables[0], LP_variables[1]]) <= 1
+        LP += lpSum([LP_variables[2], LP_variables[3]]) <= 1
+        LP += lpSum([LP_variables[4], LP_variables[5]]) <= 1
+        LP += lpSum([LP_variables[0] * 0.7, LP_variables[1] * 0.5]) >= 0.35
+        LP += lpSum([LP_variables[2] * 0.7, LP_variables[3] * 0.5]) >= 0.35
+        LP += lpSum([LP_variables[4] * 0.7, LP_variables[5] * 0.5]) >= 0.35
+
+        LP.solve()
+
+        slot_assegn_prob = []
+
+        index = 0
+        for _ in range(slots):
+            tmp = []
+            i = index
+            while i < slots * elems:
+                tmp.append(LP.variables()[i].varValue)
+                i += slots
+            slot_assegn_prob.append(tmp.copy())
+            tmp.clear()
+            index += 1
+
+        elemss = [0, 1, 2]
+        tmp_slot_ass_prob = [[], []]
+        for elem in slot_assegn_prob[0]:
+            tmp_slot_ass_prob[0].append(elem)
+        for elem in slot_assegn_prob[1]:
+            tmp_slot_ass_prob[1].append(elem)
+
+        tmp_elems = elemss.copy()
+        target = np.random.choice(tmp_elems, p=tmp_slot_ass_prob[0])
+        result[target] += 0.7
+        tmp_slot_ass_prob[1].__delitem__(target)
+        tmp_elems.__delitem__(target)
+        tmp_slot_ass_prob[1] = list(np.array(tmp_slot_ass_prob[1]) / sum(tmp_slot_ass_prob[1]))
+        target2 = np.random.choice(tmp_elems, p=tmp_slot_ass_prob[1])
+        result[target2] += 0.5
+        t_res = [0, 0, 0]
+        t_res[target] += 0.7
+        t_res[target2] += 0.5
+        t_results.append(t_res.copy())
+
+    print(np.array(result) / 1000)
+
+    x = [y[0] for y in t_results]
+    mean = np.mean(x)
+    std = np.sqrt(np.var(x))
+    n = 1000
+    mean0 = 0.4
+
+    T = (mean - mean0) / (std / np.sqrt(n))
+    if T < -1.6450:
+        print("We can state that the mean is less than 0.35 with a confidence of 5%")
+    else:
+        print("we can state anything")
+
+
+
+
 
 
 

@@ -260,4 +260,6 @@ if __name__ == "__main__":
         np.array(allocated_promenance_per_category_rand_3) * 1 / allocations_count_rand_3))
     print("Standard Avg promenance per category: " + str(
         np.array(allocated_promenance_per_category_standard) * 1 / allocations_count_standard))
+    print("--------------- T test --------------------")
+    # TODO
 

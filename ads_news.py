@@ -53,8 +53,14 @@ class Ad:
 
 if __name__ == "__main__":
 
+    a = [np.random.normal(0, 20, size=30)]
+    mean = np.mean(a)
+    var = np.sqrt(np.var(a))
+    n = len(a)
+    mean0 = 0
 
-    print(0 / 0)
+    T = (mean - mean0) / (var / np.sqrt(n))
+    print(T)
 
 
 
