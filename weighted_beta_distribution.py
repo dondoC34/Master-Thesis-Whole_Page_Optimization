@@ -41,7 +41,7 @@ class WeightedBetaDistribution:
             if count % 30 == 0:
                 proposal_weight /= 10
 
-            if count % 3000 == 0:
+            if count % 30000 == 0:
                 self.category_sw[category_index] = True
                 removed_sample = self.sample_per_category[category_index].pop(0)
                 self.category_per_slot_assignment_count[category_index][removed_sample[0]] -= 1
@@ -125,19 +125,12 @@ class WeightedBetaDistribution:
         else:
             category_index = self.categories.index(news.ad_category)
         self.category_per_slot_reward_count[category_index][slot_index] += 1
-        if isinstance(news, News):
-            index = -1
-            while True:
-                try:
-                    if self.sample_per_category[category_index][index][0] == slot_index:
-                        self.sample_per_category[category_index][index][1] = 1
-                        break
-                except IndexError:
-                    print(len(self.sample_per_category[category_index]))
-                    print(self.sample_per_category[category_index])
-                    print(self.category_sw[category_index])
-                    exit(45)
-                index -= 1
+        index = -1
+        while True:
+            if self.sample_per_category[category_index][index][0] == slot_index:
+                self.sample_per_category[category_index][index][1] = 1
+                break
+            index -= 1
 
     def plot_distribution(self, category, show=True, weight=1):
         """

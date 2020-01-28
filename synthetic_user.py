@@ -22,16 +22,16 @@ quality_per_age_var = [[0.2, 0.1, 0.1, 0.2, 0.2, 0.2],
 quality_per_genre_var = [[0.1, 0.1, 0.1, 0.2, 0.1, 0.1],
                          [0.2, 0.1, 0.2, 0.2, 0.2, 0.1]]
 
-quality_per_age_values_ads = [[0.1, 0.15, 0.2, 0.25, 0.4, 0.3],
-                              [0.2, 0.25, 0.4, 0.2, 0.5, 0.3],
-                              [0.2, 0.3, 0.35, 0.15, 0.4, 0.25]]
-quality_per_genre_values_ads = [[0.1, 0.1, 0.15, 0.2, 0.2, 0.15],
-                                [0.15, 0.2, 0.25, 0.2, 0.15, 0.1]]
-quality_per_age_var_ads = [[0.2, 0.1, 0.1, 0.2, 0.2, 0.2],
-                           [0.1, 0.2, 0.2, 0.15, 0.1, 0.25],
+quality_per_age_values_ads = [[0.1, 0.15, 0.2, 0.15, 0.05, 0.1],
+                              [0.1, 0.15, 0.05, 0.1, 0.2, 0.05],
+                              [0.03, 0.03, 0.035, 0.015, 0.1, 0.025]]
+quality_per_genre_values_ads = [[0.1, 0.1, 0.015, 0.02, 0.1, 0.15],
+                                [0.15, 0.02, 0.1, 0.02, 0.015, 0.1]]
+quality_per_age_var_ads = [[0.02, 0.01, 0.01, 0.02, 0.02, 0.02],
+                           [0.01, 0.02, 0.02, 0.015, 0.01, 0.025],
                            [0.1, 0.1, 0.2, 0.1, 0.2, 0.3]]
-quality_per_genre_var_ads = [[0.1, 0.1, 0.1, 0.2, 0.1, 0.1],
-                             [0.2, 0.1, 0.2, 0.2, 0.2, 0.1]]
+quality_per_genre_var_ads = [[0.01, 0.01, 0.01, 0.02, 0.01, 0.01],
+                             [0.02, 0.01, 0.02, 0.02, 0.02, 0.01]]
 
 
 class SyntheticUser:
@@ -234,82 +234,15 @@ def write_random_users_in_file(filename, number_of_users):
 
 if __name__ == "__main__":
 
-    slots = 2
-    elems = 3
-    result = [0, 0, 0]
-    t_results = []
-
-    for _ in range(1000):
-        LP = LpProblem("wee", LpMaximize)
-        obj_vetor = []
-
-        LP_variables = []
-
-        for i in range(elems):
-            for j in range(slots):
-                LP_variables.append(LpVariable(str(i) + "_" + str(j), lowBound=0, upBound=1))
-
-        for _ in range(elems):
-            obj_vetor += list(np.random.uniform(0, 1, size=slots))
-
-        LP += lpSum([LP_variables[i] * obj_vetor[i] for i in range(len(obj_vetor))])
-        LP += lpSum([LP_variables[0], LP_variables[2], LP_variables[4]]) <= 1
-        LP += lpSum([LP_variables[1], LP_variables[3], LP_variables[5]]) <= 1
-        LP += lpSum([LP_variables[0], LP_variables[1]]) <= 1
-        LP += lpSum([LP_variables[2], LP_variables[3]]) <= 1
-        LP += lpSum([LP_variables[4], LP_variables[5]]) <= 1
-        LP += lpSum([LP_variables[0] * 0.7, LP_variables[1] * 0.5]) >= 0.35
-        LP += lpSum([LP_variables[2] * 0.7, LP_variables[3] * 0.5]) >= 0.35
-        LP += lpSum([LP_variables[4] * 0.7, LP_variables[5] * 0.5]) >= 0.35
-
-        LP.solve()
-
-        slot_assegn_prob = []
-
-        index = 0
-        for _ in range(slots):
-            tmp = []
-            i = index
-            while i < slots * elems:
-                tmp.append(LP.variables()[i].varValue)
-                i += slots
-            slot_assegn_prob.append(tmp.copy())
-            tmp.clear()
-            index += 1
-
-        elemss = [0, 1, 2]
-        tmp_slot_ass_prob = [[], []]
-        for elem in slot_assegn_prob[0]:
-            tmp_slot_ass_prob[0].append(elem)
-        for elem in slot_assegn_prob[1]:
-            tmp_slot_ass_prob[1].append(elem)
-
-        tmp_elems = elemss.copy()
-        target = np.random.choice(tmp_elems, p=tmp_slot_ass_prob[0])
-        result[target] += 0.7
-        tmp_slot_ass_prob[1].__delitem__(target)
-        tmp_elems.__delitem__(target)
-        tmp_slot_ass_prob[1] = list(np.array(tmp_slot_ass_prob[1]) / sum(tmp_slot_ass_prob[1]))
-        target2 = np.random.choice(tmp_elems, p=tmp_slot_ass_prob[1])
-        result[target2] += 0.5
-        t_res = [0, 0, 0]
-        t_res[target] += 0.7
-        t_res[target2] += 0.5
-        t_results.append(t_res.copy())
-
-    print(np.array(result) / 1000)
-
-    x = [y[0] for y in t_results]
-    mean = np.mean(x)
-    std = np.sqrt(np.var(x))
-    n = 1000
-    mean0 = 0.4
-
-    T = (mean - mean0) / (std / np.sqrt(n))
-    if T < -1.6450:
-        print("We can state that the mean is less than 0.35 with a confidence of 5%")
-    else:
-        print("we can state anything")
+    a = open("reward_no_decay_standard.txt")
+    res = a.read().split(",")
+    res = list(map(float, res))
+    T = [k for k in range(1, 251)]
+    T = 0.045 * np.log(T) + res[0]
+    plt.plot(T)
+    # res = list(np.array(res) / T)
+    plt.plot(res)
+    plt.show()
 
 
 
