@@ -12,6 +12,7 @@ class PageCreator:
         # THE FOLLOWING TWO PARAMETERS INCLUDE THE FEATURES OF THE USERS
         self.attribute_1 = attributes_1
         self.attribute_2 = attributes_2
+        self.received_clicks = []
         self.learner_matrix = []
         # CREATES A MATRIX OF LEARNERS, THE MATRIX SIZE IS NxM, WHERE N IS THE DIMENSION OF THE FIRST CLASS OF FEATURES,
         # M THE DIMENSION OF THE SECOND ONE.
@@ -23,7 +24,8 @@ class PageCreator:
                                                  allocation_approach=allocation_approach,
                                                  categories=categories,
                                                  allocation_diversity_bounds=(0.3, 0.3, 0.3, 0.3, 0.3, 0.3),
-                                                 news_column_pivot=[0.01, 2]))
+                                                 news_column_pivot=[0.01, 2],
+                                                 ads_allocation=False))
 
             self.learner_matrix.append(attribute_row.copy())
 
@@ -61,6 +63,7 @@ class PageCreator:
         index_1 = self.attribute_1.index(user.genre)
         index_2 = self.attribute_2.index(user.age_slot)
         self.learner_matrix[index_1][index_2].user_arrival(user=user, interest_decay=True, debug=debug)
+        self.received_clicks.append(self.learner_matrix[index_1][index_2].click_per_page[-1])
 
 
 if __name__ == "__main__":
@@ -73,7 +76,7 @@ if __name__ == "__main__":
     num_of_users = 1000
     num_of_news_per_category = 400
     num_of_ads_per_category = 900
-    num_of_interaction = 5000
+    num_of_interaction = 1000
 
     # USE WHICHEVER SLOT PROMENANCE VALUE, FEASIBLE OF COURSE (>0 AND <1)
     real_slot_promenances = [0.7, 0.8, 0.7, 0.7, 0.6, 0.5, 0.5, 0.4, 0.3, 0.2]
@@ -110,24 +113,28 @@ if __name__ == "__main__":
 
     # SELECT A RANDOM USER AND MAKE IT INTERACT WITH THE SITE. REPEAT FOR NUM_OF_INTERACTIONS TIMES.
     debug = False
-    indexes_x = [0, 1]
-    indexes_y = [0, 1, 2]
-    for k in tqdm(range(num_of_interaction)):
-        if (k + 1) % 10 == 0:
-            j = k
-            for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
-                for id in range(5):
-                    ads_pool.append(Ad(j, category + "-" + str(id), np.random.choice([True, False])))
-                    j += 1
-        if k % 1000 == 0:
-            site.learner_matrix[np.random.choice(indexes_x)][np.random.choice(indexes_y)].ads_weighted_beta.plot_distribution("cibo")
-            site.learner_matrix[np.random.choice(indexes_x)][np.random.choice(indexes_y)].ads_weighted_beta.plot_distribution("tech")
-            site.learner_matrix[np.random.choice(indexes_x)][np.random.choice(indexes_y)].ads_weighted_beta.plot_distribution("gossip")
-            site.learner_matrix[np.random.choice(indexes_x)][np.random.choice(indexes_y)].ads_weighted_beta.plot_distribution("politic")
-            site.learner_matrix[np.random.choice(indexes_x)][np.random.choice(indexes_y)].ads_weighted_beta.plot_distribution("scienza")
-            site.learner_matrix[np.random.choice(indexes_x)][np.random.choice(indexes_y)].ads_weighted_beta.plot_distribution("sport")
-        user = np.random.choice(user_pool)
-        site.user_interaction(user=user, debug=debug)
+    click_result = []
+    for _ in range(25):
+        site = PageCreator(attributes_1=["M", "F"],
+                           attributes_2=["LOW", "MEDIUM", "HIGH"],
+                           real_slot_promenances=real_slot_promenances,
+                           layout_slots=10,
+                           allocation_approach="LP",
+                           categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"])
+
+        # FILL ALL THE NEWS POOLS
+        site.fill_all_news_pool(news_pool)
+        site.fill_all_ads_pool(ads_pool)
+
+        for k in tqdm(range(num_of_interaction)):
+            user = np.random.choice(user_pool)
+            site.user_interaction(user=user)
+
+        click_result.append(site.received_clicks)
+
+    plt.plot(np.mean(click_result, axis=0))
+    plt.show()
+    exit(88)
 
     # SAVE THE TRAINED WEIGHTED BETAS MATRIX OF EACH LEARNER.
     for i in range(len(site.learner_matrix)):

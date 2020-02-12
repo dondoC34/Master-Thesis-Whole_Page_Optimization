@@ -14,6 +14,7 @@ class News:
         self.slot_promenance_cumsum = 0
         self.click_sum = 0
         self.prova = [1, 2, 3]
+        self.doubled_news_indexes = [-1, -1]
 
     def set_sampled_quality(self, value):
         self.sampled_quality = value

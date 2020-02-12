@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import t
 from pulp import *
+from scipy.interpolate import interp1d
 
 slot_number = 10
 categories_number = 6
@@ -234,18 +235,43 @@ def write_random_users_in_file(filename, number_of_users):
 
 if __name__ == "__main__":
 
-    a = open("reward_no_decay_standard.txt")
-    res = a.read().split(",")
+    back = 7
+    forward = 7
+    f = open("reward_decay_LP_frequent.txt")
+    res = f.read().split(",")
     res = list(map(float, res))
-    T = [k for k in range(1, 251)]
-    T = 0.045 * np.log(T) + res[0]
-    plt.plot(T)
-    # res = list(np.array(res) / T)
+
+    final_res = []
+
+    for i in range(len(res)):
+        if i < back:
+            final_res.append((sum(res[0:i]) + res[i] + sum(res[i + 1: i + 1 + forward])) /
+                             (len(res[0:i]) + len(res[i + 1: i + 1 + forward]) + 1))
+        elif i + forward >= len(res):
+            final_res.append((sum(res[i - back:i]) + res[i] + sum(res[-len(res) + i - 1: -1])) /
+                             (len(res[i - back:i]) + len(res[-len(res) + i - 1: -1]) + 1))
+        else:
+            final_res.append((sum(res[i - back:i]) + res[i] + sum(res[i + 1: i + 1 + forward])) /
+                             (len(res[i - back:i]) + len(res[i + 1: i + 1 + forward]) + 1))
+
+    final_final_res = []
+
+    back = 10
+    forward = 10
+    for i in range(len(res)):
+        if i < back:
+            final_final_res.append((sum(final_res[0:i]) + final_res[i] + sum(final_res[i + 1: i + 1 + forward])) /
+                             (len(final_res[0:i]) + len(final_res[i + 1: i + 1 + forward]) + 1))
+        elif i + forward >= len(res):
+            final_final_res.append((sum(final_res[i - back:i]) + final_res[i] + sum(final_res[-len(final_res) + i - 1: -1])) /
+                             (len(final_res[i - back:i]) + len(final_res[-len(final_res) + i - 1: -1]) + 1))
+        else:
+            final_final_res.append((sum(final_res[i - back:i]) + final_res[i] + sum(final_res[i + 1: i + 1 + forward])) /
+                             (len(final_res[i - back:i]) + len(final_res[i + 1: i + 1 + forward]) + 1))
+
     plt.plot(res)
+    plt.plot(final_final_res, "r")
     plt.show()
-
-
-
 
 
 

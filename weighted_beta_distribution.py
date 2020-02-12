@@ -127,10 +127,14 @@ class WeightedBetaDistribution:
         self.category_per_slot_reward_count[category_index][slot_index] += 1
         index = -1
         while True:
-            if self.sample_per_category[category_index][index][0] == slot_index:
-                self.sample_per_category[category_index][index][1] = 1
-                break
-            index -= 1
+            try:
+                if self.sample_per_category[category_index][index][0] == slot_index:
+                    self.sample_per_category[category_index][index][1] = 1
+                    break
+                index -= 1
+            except IndexError:
+                print("problem")
+                exit(8)
 
     def plot_distribution(self, category, show=True, weight=1):
         """
