@@ -12,7 +12,11 @@ class PageCreator:
         # THE FOLLOWING TWO PARAMETERS INCLUDE THE FEATURES OF THE USERS
         self.attribute_1 = attributes_1
         self.attribute_2 = attributes_2
-        self.received_clicks = []
+        self.fraction_of_ads_clicks = []
+        self.total_ads_clicks = 0
+        self.total_ads_allocations = 0
+        self.total_ads_assignment = []
+        self.average_reward = []
         self.learner_matrix = []
         # CREATES A MATRIX OF LEARNERS, THE MATRIX SIZE IS NxM, WHERE N IS THE DIMENSION OF THE FIRST CLASS OF FEATURES,
         # M THE DIMENSION OF THE SECOND ONE.
@@ -23,9 +27,10 @@ class PageCreator:
                                                  layout_slots=layout_slots,
                                                  allocation_approach=allocation_approach,
                                                  categories=categories,
-                                                 allocation_diversity_bounds=(0.3, 0.3, 0.3, 0.3, 0.3, 0.3),
+                                                 allocation_diversity_bounds=(0.4, 0.4, 0.4, 0.4, 0.4, 0.4),
                                                  news_column_pivot=[0.01, 2],
-                                                 ads_allocation=False))
+                                                 ads_allocation=False,
+                                                 ))
 
             self.learner_matrix.append(attribute_row.copy())
 
@@ -48,10 +53,22 @@ class PageCreator:
             for learner in learner_row:
                 learner.fill_news_pool(pool, append=append)
 
+    def read_all_ads_weighted_beta(self, folder):
+
+        for i in range(len(self.learner_matrix)):
+            for j in range(len(self.learner_matrix[i])):
+                self.learner_matrix[i][j].read_ads_weighted_beta_matrix_from_file(desinence=str(i)+"-"+str(j)+"10kiter_1kusers",
+                                                                                  folder=folder)
+
     def fill_all_ads_pool(self, pool, append=False):
         for learner_row in self.learner_matrix:
             for learner in learner_row:
                 learner.fill_ads_pool(pool, append=append)
+
+    def refresh_all_ads_list(self, ads_list):
+        for learner_row in self.learner_matrix:
+            for learner in learner_row:
+                learner.refresh_ads_buffer(ads_list=ads_list)
 
     def user_interaction(self, user, debug=False):
         """
@@ -63,7 +80,14 @@ class PageCreator:
         index_1 = self.attribute_1.index(user.genre)
         index_2 = self.attribute_2.index(user.age_slot)
         self.learner_matrix[index_1][index_2].user_arrival(user=user, interest_decay=True, debug=debug)
-        self.received_clicks.append(self.learner_matrix[index_1][index_2].click_per_page[-1])
+        self.average_reward.append(self.learner_matrix[index_1][index_2].multiple_arms_avg_reward[-1])
+        # self.total_ads_clicks += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][0]
+        # self.total_ads_allocations += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][1]
+        # self.total_ads_assignment.append(self.total_ads_allocations)
+        # try:
+        #     self.fraction_of_ads_clicks.append(self.total_ads_clicks / self.total_ads_allocations)
+        # except ZeroDivisionError:
+        #     self.fraction_of_ads_clicks.append(0)
 
 
 if __name__ == "__main__":
@@ -74,12 +98,12 @@ if __name__ == "__main__":
     user_age = [j for j in range(10, 91)]
 
     num_of_users = 1000
-    num_of_news_per_category = 400
-    num_of_ads_per_category = 900
-    num_of_interaction = 1000
+    num_of_news_per_category = 800
+    num_of_ads_per_category = 1100
+    num_of_interaction = 600
 
     # USE WHICHEVER SLOT PROMENANCE VALUE, FEASIBLE OF COURSE (>0 AND <1)
-    real_slot_promenances = [0.7, 0.8, 0.7, 0.7, 0.6, 0.5, 0.5, 0.4, 0.3, 0.2]
+    real_slot_promenances = [0.9, 0.8, 0.7, 0.8, 0.5, 0.4, 0.5, 0.4, 0.3, 0.1]
 
     for i in range(num_of_users):
         # FILL THE USER POOL
@@ -97,49 +121,80 @@ if __name__ == "__main__":
     # CREATE A BOUNCH OF ADS
     for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
         for id in range(num_of_ads_per_category):
-            ads_pool.append(Ad(k, category + "-" + str(id), np.random.choice([True, False])))
+            ads_pool.append(Ad(k, category + "-" + str(id), np.random.choice([False])))
             k += 1
-
-    site = PageCreator(attributes_1=["M", "F"],
-                       attributes_2=["LOW", "MEDIUM", "HIGH"],
-                       real_slot_promenances=real_slot_promenances,
-                       layout_slots=10,
-                       allocation_approach="LP",
-                       categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"])
-
-    # FILL ALL THE NEWS POOLS
-    site.fill_all_news_pool(news_pool)
-    site.fill_all_ads_pool(ads_pool)
+    support_ads_list = []
+    ads_refill = False
 
     # SELECT A RANDOM USER AND MAKE IT INTERACT WITH THE SITE. REPEAT FOR NUM_OF_INTERACTIONS TIMES.
     debug = False
     click_result = []
-    for _ in range(25):
+    ads_assign = []
+    site_avg_reward = []
+    for w in tqdm(range(1000)):
+
         site = PageCreator(attributes_1=["M", "F"],
                            attributes_2=["LOW", "MEDIUM", "HIGH"],
                            real_slot_promenances=real_slot_promenances,
                            layout_slots=10,
-                           allocation_approach="LP",
+                           allocation_approach="alt_LP",
                            categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"])
 
         # FILL ALL THE NEWS POOLS
         site.fill_all_news_pool(news_pool)
-        site.fill_all_ads_pool(ads_pool)
+        for user in user_pool:
+            user.last_news_clicked.clear()
+            user.last_news_in_allocation.clear()
+            user.viewed_but_not_clicked_news.clear()
 
-        for k in tqdm(range(num_of_interaction)):
+        for o in range(1, num_of_interaction):
+
+            if ads_refill and ((o % 10) == 0):
+                for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
+                    for id in range(5):
+                        support_ads_list.append(Ad(k, category + "-" + str(id), np.random.choice([True, False])))
+                        k += 1
+                ads_pool += support_ads_list
+                site.refresh_all_ads_list(support_ads_list)
+                support_ads_list.clear()
+
             user = np.random.choice(user_pool)
             site.user_interaction(user=user)
 
-        click_result.append(site.received_clicks)
+        click_result.append(site.fraction_of_ads_clicks)
+        ads_assign.append(site.total_ads_assignment)
+        site_avg_reward.append(site.average_reward)
 
-    plt.plot(np.mean(click_result, axis=0))
-    plt.show()
-    exit(88)
+    file = open("site-performances/site_avg_reward.txt", "w")
+    site_avg_reward = np.mean(site_avg_reward, axis=0)
+    file.write(str(site_avg_reward[0]))
+    for i in range(1, len(site_avg_reward)):
+        file.write("," + str(site_avg_reward[i]))
+    file.close()
+    # result = []
+    # for i in [2 * k for k in range(1, 1001)]:
+    #     tmp = []
+    #     for j in range(len(click_result)):
+    #         for m in range(len(click_result[j])):
+    #             if ads_assign[j][m] == i:
+    #                 if click_result[j][m] not in tmp:
+    #                     tmp.append(click_result[j][m])
+    #
+    #     if len(tmp) > 0:
+    #         result.append(np.mean(tmp))
+    #     else:
+    #         result.append(-1)
 
-    # SAVE THE TRAINED WEIGHTED BETAS MATRIX OF EACH LEARNER.
-    for i in range(len(site.learner_matrix)):
-        for j in range(len(site.learner_matrix[i])):
-            site.learner_matrix[i][j].save_weighted_beta_matrices(desinence=str(i) + "-" + str(j) + "test1_10kiter_1kusers")
+    # click_result = np.mean(click_result, axis=0)
+    # print(ads_assign[0])
+    # file = open("Ads-wpdda-perf/PDDA", "w")
+    # file.write(str(result[0]))
+    # for i in range(1, len(result)):
+    #     file.write("," + str(result[i]))
+    # file.close()
+
+
+
 
 
 

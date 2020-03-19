@@ -13,21 +13,20 @@ def save_allocation_errors(learners_list):
     in the list has been called before.
     :return: nothing
     """
-    file = open("perf_rand_1111.txt", "w")
-    file2 = open("perf_rand_2222.txt", "w")
-    file3 = open("perf_rand_3333.txt", "w")
+    file = open("de-Rand-Performances/perf_rand_1.txt", "a")
+    file2 = open("de-Rand-Performances/perf_rand_2.txt", "a")
+    file3 = open("de-Rand-Performances/perf_rand_3.txt", "a")
     for learner in learners_list:
-        if i % 3 == 1:
-            file.write(str(learner.rand_1_errors[0]))
-            file2.write(str(learner.rand_2_errors[0]))
-            file3.write(str(learner.rand_3_errors[0]))
-            for k in range(1, len(learner.rand_1_errors)):
-                file.write("," + str(learner.rand_1_errors[k]))
-                file2.write("," + str(learner.rand_2_errors[k]))
-                file3.write("," + str(learner.rand_3_errors[k]))
-            file.write(",")
-            file2.write(",")
-            file3.write(",")
+        file.write(str(learner.rand_1_errors[0]))
+        file2.write(str(learner.rand_2_errors[0]))
+        file3.write(str(learner.rand_3_errors[0]))
+        for k in range(1, len(learner.rand_1_errors)):
+            file.write("," + str(learner.rand_1_errors[k]))
+            file2.write("," + str(learner.rand_2_errors[k]))
+            file3.write("," + str(learner.rand_3_errors[k]))
+        file.write(",")
+        file2.write(",")
+        file3.write(",")
     file.close()
     file2.close()
     file3.close()
@@ -44,37 +43,34 @@ def plot_allocation_errors():
     final_result2 = []
     final_result3 = []
 
-    for des in ["", "1", "11", "111"]:
-        file = open("perf_rand_1" + des + ".txt", "r")
-        result = file.read().split(",")
-        result.__delitem__(-1)
-        result = list(map(float, result))
-        final_result += result
+    file = open("de-Rand-Performances/perf_rand_1.txt", "r")
+    result = file.read().split(",")
+    result.__delitem__(-1)
+    result = list(map(float, result))
+    final_result += result
     file.close()
 
-    for des in ["", "2", "22", "222"]:
-        file = open("perf_rand_2" + des + ".txt", "r")
-        result2 = file.read().split(",")
-        result2.__delitem__(-1)
-        result2 = list(map(float, result2))
-        final_result2 += result2
+    file = open("de-Rand-Performances/perf_rand_2.txt", "r")
+    result2 = file.read().split(",")
+    result2.__delitem__(-1)
+    result2 = list(map(float, result2))
+    final_result2 += result2
     file.close()
 
-    for des in ["", "3", "33", "333"]:
-        file = open("perf_rand_3" + des + ".txt", "r")
-        result3 = file.read().split(",")
-        result3.__delitem__(-1)
-        result3 = list(map(float, result3))
-        final_result3 += result3
+    file = open("de-Rand-Performances/perf_rand_3.txt", "r")
+    result3 = file.read().split(",")
+    result3.__delitem__(-1)
+    result3 = list(map(float, result3))
+    final_result3 += result3
     file.close()
+
     res = final_result
     res2 = final_result2
     res3 = final_result3
-    sns.distplot(res, hist=False)
-    sns.distplot(res2, hist=False)
-    sns.distplot(res3, hist=False)
-    plt.legend(labels=["a", "b", "c"])
+    plt.hist([res, res2, res3], rwidth=0.5, bins=10)
+    plt.legend(labels=["de-Randomizator-1", "de-Randomizator-2", "de-Randomizator-3"])
     plt.title("DeRandomization Mean Error Distribution")
+    plt.ylabel("Occurrences")
     plt.show()
 
 
@@ -86,42 +82,48 @@ if __name__ == "__main__":
     Furthermore, the average slot promenance per category given in output by each learner is measured.     
     """
 
-    real_slot_promenances = [0.7, 0.8, 0.7, 0.7, 0.6, 0.5, 0.5, 0.4, 0.3, 0.2]
-    categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
-    diversity_percentage_for_category = 10
+    real_slot_promenances = [0.7, 0.8, 0.5, 0.3, 0.2, 0.4, 0.3, 0.1]
+
+    categories = ["cibo", "gossip", "politic"]
+    diversity_percentage_for_category = 2.5
     promenance_percentage_value = diversity_percentage_for_category / 100 * sum(real_slot_promenances)
-    allocation_diversity_bounds = (promenance_percentage_value, promenance_percentage_value) * 3
-    iterations = 15000
+    allocation_diversity_bounds = (promenance_percentage_value, promenance_percentage_value, promenance_percentage_value)
+    iterations = 40000
     user = SyntheticUser(23, "M", 35, "C")
-    news_per_category = 100
-    learner_rand_1 = NewsLearner(categories=categories, layout_slots=10,
+    news_per_category = len(real_slot_promenances)
+    learner_rand_1 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
                                  real_slot_promenances=real_slot_promenances,
                                  allocation_approach="LP",
                                  lp_rand_technique="rand_1",
-                                 allocation_diversity_bounds=allocation_diversity_bounds)
+                                 allocation_diversity_bounds=allocation_diversity_bounds,
+                                 ads_allocation=False)
 
-    learner_rand_2 = NewsLearner(categories=categories, layout_slots=10,
+    learner_rand_2 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
                                  real_slot_promenances=real_slot_promenances,
                                  allocation_approach="LP",
                                  lp_rand_technique="rand_2",
-                                 allocation_diversity_bounds=allocation_diversity_bounds)
+                                 allocation_diversity_bounds=allocation_diversity_bounds,
+                                 ads_allocation=False)
 
-    learner_rand_3 = NewsLearner(categories=categories, layout_slots=10,
+    learner_rand_3 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
                                  real_slot_promenances=real_slot_promenances,
                                  allocation_approach="LP",
                                  lp_rand_technique="rand_3",
-                                 allocation_diversity_bounds=allocation_diversity_bounds)
+                                 allocation_diversity_bounds=allocation_diversity_bounds,
+                                 ads_allocation=False)
 
-    standard_learner = NewsLearner(categories=categories, layout_slots=10,
+    standard_learner = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
                                    real_slot_promenances=real_slot_promenances,
                                    allocation_approach="standard",
-                                   allocation_diversity_bounds=allocation_diversity_bounds)
+                                   allocation_diversity_bounds=allocation_diversity_bounds,
+                                   ads_allocation=False)
+
 
     # READ THE WEIGHTED BETA MATRIX FROM A FILE TO HAVE THE BETAS DISTRIBUTION BE DIFFERENT FROM JUST A UNIFORM
-    learner_rand_1.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1test1_10kiter_1kusers"], folder="")
-    learner_rand_2.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1test1_10kiter_1kusers"], folder="")
-    learner_rand_3.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1test1_10kiter_1kusers"], folder="")
-    standard_learner.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["0-1test1_10kiter_1kusers"], folder="")
+    learner_rand_1.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
+    learner_rand_2.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
+    learner_rand_3.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
+    standard_learner.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
 
     # CREATE AND FILL THE NEWS POOL OF EACH LEARNER
     news_pool = []
@@ -264,6 +266,13 @@ if __name__ == "__main__":
     print("Standard quality metrics:")
     print("Avg page reward: " + str(np.mean(page_reward_standard)))
     print("Avg page diversity: " + str(np.mean(page_diversity_standard)))
+    file = open("de-Rand-Performances/de-rand-metrics.txt", "a")
+    file.write(str(diversity_percentage_for_category) + "," + str(len(real_slot_promenances)) + " 3cat\n")
+    file.write(str(np.mean(page_reward_rand_1)) + "," + str(np.mean(page_diversity_rand_1) / 3 * 100) + "\n")
+    file.write(str(np.mean(page_reward_rand_2)) + "," + str(np.mean(page_diversity_rand_2) / 3 * 100) + "\n")
+    file.write(str(np.mean(page_reward_rand_3)) + "," + str(np.mean(page_diversity_rand_3) / 3 * 100) + "\n")
+    file.write(str(np.mean(page_reward_standard)) + "," + str(np.mean(page_diversity_standard) / 3 * 100) + "\n")
+    file.close()
     print("--------------------------------")
     print("ILP allocation quality metrics:")
     print("Avg page reward: " + str(np.mean(page_reward_ilp)))
@@ -278,6 +287,7 @@ if __name__ == "__main__":
     print("Standard Avg promenance per category: " + str(
         np.array(allocated_promenance_per_category_standard) * 1 / allocations_count_standard))
     print("--------------- T test --------------------")
+
     for i in range(len(categories)):
         x = [y[i] for y in sample_rand_1]
         mean = np.mean(x)
@@ -327,6 +337,4 @@ if __name__ == "__main__":
                   "is significantly less than " + str(
                 allocation_diversity_bounds[i]) + " with confidence 95%, for what"
                                                  "conerns algorithm de_rand3.")
-
-
 

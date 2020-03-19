@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\dondo\PycharmProjects\AdsApp\venv"
+VIRTUAL_ENV="C:\Users\dondo\PycharmProjects\Master-Thesis-Whole_Page_Optimization_\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

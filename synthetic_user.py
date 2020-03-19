@@ -6,6 +6,7 @@ import seaborn as sns
 from scipy.stats import t
 from pulp import *
 from scipy.interpolate import interp1d
+from Line_Smoother import *
 
 slot_number = 10
 categories_number = 6
@@ -24,13 +25,13 @@ quality_per_genre_var = [[0.1, 0.1, 0.1, 0.2, 0.1, 0.1],
                          [0.2, 0.1, 0.2, 0.2, 0.2, 0.1]]
 
 quality_per_age_values_ads = [[0.1, 0.15, 0.2, 0.15, 0.05, 0.1],
-                              [0.1, 0.15, 0.05, 0.1, 0.2, 0.05],
+                              [0.1, 0.15, 0.05, 0.1, 0.1, 0.05],
                               [0.03, 0.03, 0.035, 0.015, 0.1, 0.025]]
-quality_per_genre_values_ads = [[0.1, 0.1, 0.015, 0.02, 0.1, 0.15],
-                                [0.15, 0.02, 0.1, 0.02, 0.015, 0.1]]
+quality_per_genre_values_ads = [[0.01, 0.01, 0.015, 0.02, 0.19, 0.15],
+                                [0.1, 0.2, 0.15, 0.02, 0.015, 0.01]]
 quality_per_age_var_ads = [[0.02, 0.01, 0.01, 0.02, 0.02, 0.02],
                            [0.01, 0.02, 0.02, 0.015, 0.01, 0.025],
-                           [0.1, 0.1, 0.2, 0.1, 0.2, 0.3]]
+                           [0.01, 0.01, 0.02, 0.01, 0.02, 0.03]]
 quality_per_genre_var_ads = [[0.01, 0.01, 0.01, 0.02, 0.01, 0.01],
                              [0.02, 0.01, 0.02, 0.02, 0.02, 0.01]]
 
@@ -235,44 +236,24 @@ def write_random_users_in_file(filename, number_of_users):
 
 if __name__ == "__main__":
 
-    back = 7
-    forward = 7
-    f = open("reward_decay_LP_frequent.txt")
-    res = f.read().split(",")
+    file = open("site-performances/site_avg_reward.txt", "r")
+    res = file.read().splitlines()[0]
+    res = res.split(",")
     res = list(map(float, res))
-
-    final_res = []
-
+    smoother = LineSmoother(res, 4, [[5, 1], [7, 2], [20, 2], [30, 3]])
+    # res = smoother.smooth_line()
+    deletion = []
     for i in range(len(res)):
-        if i < back:
-            final_res.append((sum(res[0:i]) + res[i] + sum(res[i + 1: i + 1 + forward])) /
-                             (len(res[0:i]) + len(res[i + 1: i + 1 + forward]) + 1))
-        elif i + forward >= len(res):
-            final_res.append((sum(res[i - back:i]) + res[i] + sum(res[-len(res) + i - 1: -1])) /
-                             (len(res[i - back:i]) + len(res[-len(res) + i - 1: -1]) + 1))
-        else:
-            final_res.append((sum(res[i - back:i]) + res[i] + sum(res[i + 1: i + 1 + forward])) /
-                             (len(res[i - back:i]) + len(res[i + 1: i + 1 + forward]) + 1))
-
-    final_final_res = []
-
-    back = 10
-    forward = 10
-    for i in range(len(res)):
-        if i < back:
-            final_final_res.append((sum(final_res[0:i]) + final_res[i] + sum(final_res[i + 1: i + 1 + forward])) /
-                             (len(final_res[0:i]) + len(final_res[i + 1: i + 1 + forward]) + 1))
-        elif i + forward >= len(res):
-            final_final_res.append((sum(final_res[i - back:i]) + final_res[i] + sum(final_res[-len(final_res) + i - 1: -1])) /
-                             (len(final_res[i - back:i]) + len(final_res[-len(final_res) + i - 1: -1]) + 1))
-        else:
-            final_final_res.append((sum(final_res[i - back:i]) + final_res[i] + sum(final_res[i + 1: i + 1 + forward])) /
-                             (len(final_res[i - back:i]) + len(final_res[i + 1: i + 1 + forward]) + 1))
-
-    plt.plot(res)
-    plt.plot(final_final_res, "r")
+        if res[i] > 0.55:
+            deletion.append(i)
+    deletion.sort(reverse=True)
+    for elem in deletion:
+        res.__delitem__(elem)
+    plt.plot(res, linestyle="dotted", linewidth=2)
+    plt.title("Multiple Users: Clustering Effect")
+    plt.ylabel("Expected Reward")
+    plt.xlabel("Interaction")
     plt.show()
-
 
 
 

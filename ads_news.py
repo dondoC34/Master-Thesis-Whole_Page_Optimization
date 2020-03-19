@@ -1,5 +1,8 @@
 import scipy.optimize as opt
 import numpy as np
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+import sys
 
 
 class News:
@@ -10,7 +13,7 @@ class News:
         self.news_name = news_name
         self.news_category = news_name.split("-")[0]
         self.sampled_quality = 0
-        self.image_path = "News-AdsApp - Copia/" + news_name + ".gif"
+        self.image_path = "News-AdsApp-Copia/" + news_name + ".gif"
         self.slot_promenance_cumsum = 0
         self.click_sum = 0
         self.prova = [1, 2, 3]
@@ -54,14 +57,20 @@ class Ad:
 
 if __name__ == "__main__":
 
-    a = [np.random.normal(0, 20, size=30)]
-    mean = np.mean(a)
-    var = np.sqrt(np.var(a))
-    n = len(a)
-    mean0 = 0
+    file = open("regret_M_27_C3_N300_L5_FI0.txt", "r")
+    res = file.read().splitlines()
+    best = float(res[1])
+    res = res[0].split(",")
+    res = list(map(float, res))
+    res = np.cumsum(best - np.array(res))
+    logg = [0]
+    for i in range(1, len(res)):
+        logg.append(1.5 * np.log(i))
+    logg = np.array(logg) + res[0]
+    plt.plot(res, "r")
+    plt.plot(logg)
+    plt.show()
 
-    T = (mean - mean0) / (var / np.sqrt(n))
-    print(T)
 
 
 

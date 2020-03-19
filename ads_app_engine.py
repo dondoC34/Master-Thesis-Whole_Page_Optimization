@@ -4,10 +4,22 @@ from news_learner import *
 from PIL import Image, ImageTk
 import sympy as sy
 from sympy.stats import ContinuousRV
+import numpy as np
 
 from tkinter.ttk import *
 clicked = []
 # resize 500x600 large imgs
+
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 class AdsAppEngine:
@@ -23,8 +35,15 @@ class AdsAppEngine:
         self.observed_thresold = observed_thresold
         self.clicked = [False] * 10
         self.observed = [False] * 10
+        self.clicked_news = []
+        self.num_of_clicks_per_page = []
+        self.allocations = []
+        self.times = []
+        self.init_inspection_time = 0
+        self.end_inspection_time = 0
         self.learner = NewsLearner(categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"],
-                                   layout_slots=10)
+                                   layout_slots=10, real_slot_promenances=[0.9, 0.5, 0.5, 0.8, 0.5, 0.5, 0.5, 0.5, 0.5, 0.4], allocation_approach="LP",
+                                   allocation_diversity_bounds=[0.20]*6, ads_allocation=False)
         self.root.title(title)
         root.configure(bg="black")
         self.root.geometry(geometry)
@@ -33,7 +52,7 @@ class AdsAppEngine:
         news_pool = []
         k = 0
         for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
-            for id in range(1, 21):
+            for id in range(1, 41):
                 news_pool.append(News(news_id=k,
                                       news_name=category + "-" + str(id)))
                 k += 1
@@ -353,31 +372,37 @@ class AdsAppEngine:
 
     def allocate_new_page(self):
 
-        self.news_allocation = self.learner.find_best_allocation(verbose=False)
-
-        root.photo1 = ImageTk.PhotoImage(Image.open(self.news_allocation[0][0].image_path).resize((300, 300), Image.ANTIALIAS))
+        self.news_allocation = self.learner.find_best_allocation(interest_decay=False, user=None)
+        allocation = []
+        for elem in self.news_allocation:
+            allocation.append(elem.news_category)
+        self.allocations.append(allocation.copy())
+        root.photo1 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[0].image_path)).resize((300, 300), Image.ANTIALIAS))
         self.b1.configure(image=root.photo1)
-        root.photo2 = ImageTk.PhotoImage(Image.open(self.news_allocation[1][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo2 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[1].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b2.configure(image=root.photo2)
-        root.photo3 = ImageTk.PhotoImage(Image.open(self.news_allocation[2][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo3 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[2].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b3.configure(image=root.photo3)
-        root.photo4 = ImageTk.PhotoImage(Image.open(self.news_allocation[3][0].image_path).resize((300, 300), Image.ANTIALIAS))
+        root.photo4 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[3].image_path)).resize((300, 300), Image.ANTIALIAS))
         self.b4.configure(image=root.photo4)
-        root.photo5 = ImageTk.PhotoImage(Image.open(self.news_allocation[4][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo5 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[4].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b5.configure(image=root.photo5)
-        root.photo6 = ImageTk.PhotoImage(Image.open(self.news_allocation[5][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo6 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[5].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b6.configure(image=root.photo6)
-        root.photo7 = ImageTk.PhotoImage(Image.open(self.news_allocation[6][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo7 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[6].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b7.configure(image=root.photo7)
-        root.photo8 = ImageTk.PhotoImage(Image.open(self.news_allocation[7][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo8 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[7].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b8.configure(image=root.photo8)
-        root.photo9 = ImageTk.PhotoImage(Image.open(self.news_allocation[8][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo9 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[8].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b9.configure(image=root.photo9)
-        root.photo10 = ImageTk.PhotoImage(Image.open(self.news_allocation[9][0].image_path).resize((150, 150), Image.ANTIALIAS))
+        root.photo10 = ImageTk.PhotoImage(Image.open(resource_path(self.news_allocation[9].image_path)).resize((150, 150), Image.ANTIALIAS))
         self.b10.configure(image=root.photo10)
+        self.init_inspection_time = time.time()
 
     def next_page(self):
 
+        self.end_inspection_time = time.time()
+        self.times.append(self.end_inspection_time - self.init_inspection_time)
         observed_slots = []
         not_observed_slots = []
         clicked_news = []
@@ -404,11 +429,17 @@ class AdsAppEngine:
                     not_clicked_news.append(self.news_allocation[i])
 
             # update the news ts learner
-            self.learner.slot_observation(observed_slots, observed=True)
-            self.learner.slot_observation(not_observed_slots, observed=False)
-            self.learner.news_click(clicked_news, clicked=True)
-            self.learner.news_click(not_clicked_news, clicked=False)
-            self.learner.observed_news(observed_news)
+            tmp_clicked_news = []
+            tmp_num_of_clicks = 0
+            for k in range(len(self.clicked)):
+                if self.clicked[k]:
+                    tmp_num_of_clicks += 1
+                    tmp_clicked_news.append(self.news_allocation[k].news_category)
+                    self.learner.news_click(self.news_allocation[k], user=None, slot_nr=[k], interest_decay=False)
+                else:
+                    tmp_clicked_news.append(0)
+            self.clicked_news.append(tmp_clicked_news.copy())
+            self.num_of_clicks_per_page.append(tmp_num_of_clicks)
 
             # reset class parameters
             self.clicked = [False] * 10
@@ -427,9 +458,38 @@ class AdsAppEngine:
             self.allocate_new_page()
 
         else:
+            file = open("send_me_back_to_luca.txt", "a")
+            file.write(str(self.num_of_clicks_per_page[0]))
+            for j in range(1, len(self.num_of_clicks_per_page)):
+                file.write("," + str(self.num_of_clicks_per_page[j]))
+            file.write("-")
+            k = 0
+            for click in self.clicked_news:
+                k += 1
+                file.write(str(click[0]))
+                for j in range(1, len(click)):
+                    file.write("," + str(click[j]))
+                if k != len(self.allocations) - 1:
+                    file.write(";")
+            file.write("-")
+            k = 0
+            for alloc in self.allocations:
+                k += 1
+                file.write(str(alloc[0]))
+                for j in range(1, len(alloc)):
+                    file.write("," + str(alloc[j]))
+                if k != len(self.allocations) - 1:
+                    file.write(";")
+            file.write("-")
+            file.write(str(self.times[0]))
+            for j in range(1, len(self.times)):
+                file.write("," + str(self.times[j]))
+            file.write("\n")
+            file.close()
+
             self.root.destroy()
 
 
 if __name__ == "__main__":
     root = tk.Tk()
-    a = AdsAppEngine(root, "AdsApp-News", "1050x650", 0.7)
+    engine = AdsAppEngine(root, "AdsApp-News", "1050x650", 0.7, num_of_pages=10)

@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.stats as st
 import matplotlib.pyplot as plt
+from news_learner import *
+from Line_Smoother import *
 import seaborn as sns
 from scipy.integrate import quad
 import time as time
@@ -37,6 +39,18 @@ def rejection_sampling(iter=100000):
 
 if __name__ == "__main__":
 
-    a = [[1, 2, 3], [5, 1, 3], [6, 4, 2], [7, 2, 5]]
-    a.sort(key=lambda x: x[2] * x[1], reverse=False)
-    print(a)
+    categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
+    real_slot_promenances = [0.156, 0.53, 0.245, 0.16, 0.23, 0.22, 0.654, 0.1, 0.3]
+
+    learner_rand_1 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
+                                 real_slot_promenances=real_slot_promenances,
+                                 allocation_approach="LP",
+                                 lp_rand_technique="rand_1",)
+    learner_rand_1.read_weighted_beta_matrix_from_file(indexes=[[0, 0], [0, 2], [1, 2]],
+                                                desinences=["0-2test1_10kiter_1kusers"]*3,
+                                                folder="Saved-News_W-Beta/")
+
+    learner_rand_1.weighted_betas_matrix[0][0].plot_distribution("sport")
+    learner_rand_1.weighted_betas_matrix[0][2].plot_distribution("sport")
+    learner_rand_1.weighted_betas_matrix[1][2].plot_distribution("sport")
+
