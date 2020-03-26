@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title>AI Article Recommendation</title>
+  </head>
+  <body>
+
+    <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
+  <a class="navbar-brand mb-0 h1">
+    AI Article Recommendation</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item">
+        <a id="link1" class="nav-link" href="http://localhost:8000">Who Am I<span class="sr-only">(current)</span></a>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" id="link2" href="http://localhost:8000/istructions">Instructions</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="link3" href="http://localhost:8000/credits">
+          Credits
+        </a>
+      </li>
+    </ul>
+    <button class="btn btn-outline-success my-2 my-sm-0" onclick=startExperience()>Get Started!</button>
+  </div>
+</nav>
+<br>
+<br>
+<br>
+<nav>
+  <div class="nav nav-tabs" id="nav-tab" role="tablist">
+    <a class="nav-item nav-link active" id="nav-home-tab" data-toggle="tab" href="#nav-home" role="tab" aria-controls="nav-home" aria-selected="true">Italiano</a>
+    <a class="nav-item nav-link" id="nav-profile-tab" data-toggle="tab" href="#nav-profile" role="tab" aria-controls="nav-profile" aria-selected="false">English</a>
+  </div>
+</nav>
+<div class="tab-content" id="nav-tabContent">
+  <div class="tab-pane fade show active" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab">
+    <div class="container">
+      <div class="row">
+    <div class="col-sm-6">
+      <br>
+      <h1>Istruzioni</h1>
+      <ul>
+        <li>L'esperienza da PC &egrave raccomandata, in quanto pi&ugrave vicina al contesto in cui questo progretto &egrave stato ideato. Se possibile, utilizza un PC!</li>
+        <li>Vi verranno presentate dieci pagine web, una dopo l'altra, ognuna contenente diverse notizie pi&ugrave o meno grandi. Cliccate quelle che catturano il vostro interesse </li>
+        <li>Potete cliccare anche pi&ugrave di una notizia per pagina</li>
+        <li>Non c'&egrave ragione di essere parsimoniosi con il numero di click, cliccate tutto ci&ograve che vi attira</li>
+        <li>Una volta finito di cliccare notizie su una pagina, premete il pulsante "Next"</li>
+        <li>Comportatevi come se foste su una reale pagina web di notizie: non siete forzati ad esaminare tutte le stesse, anche esaminare solo quelle che "balzano all'occhio" maggiormente o quelle pi&ugrave grandi &egrave buono</li>
+        <li>Se, durante le pagine successive, vi balza all'occhio una notizia che avete gi&agrave cliccato, sarebbe meglio se questa venisse cliccata di nuovo. Questo non significa che &egrave necessario esaminare tutte le pagine seguenti alla ricerca di una notizia gi&agrave cliccata, ma solo se questa viene notata</li>
+      </ul>
+    </div>
+    <div class="col-sm-6">
+      <br>
+      <br>
+      <br>
+      <ul>
+        <li>Per ogni esperienza che porterete a termine, un set di dati verr&agrave internamente salvato sul server</li>
+        <li>Pi&ugrave esperienze porterete a termine, pi&ugrave &egrave grande l'aiuto che mi state dando per il mio progetto finale</li>
+        <li>Le esperienze vengono eseguite in totale anonimato</li>
+      </ul>
+    </div>
+  </div>
+  </div>
+  </div>
+  <div class="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab">
+    <div class="container">
+      <div class="row">
+    <div class="col-sm-6">
+      <br>
+      <h1>Instructions</h1>
+      <ul>
+        <li>The experience from PC is recommended, since it captures more closely the target it has been conceived for. If possible, take your PC!</li>
+        <li>You will be shown ten web pages, one after another, each of them containing articles in a given layout. Click those articles which capture your interest</li>
+        <li>You can click more than one article per page</li>
+        <li>There is no reason to save clicks, click whichever article you are interested in</li>
+        <li>Once you have finished clicking articles on a page, press the "next" button </li>
+        <li>Please behave as you are visiting a real online newspaper page: you are not forced to examin all the articles displayed, even examining only those article that capture you attention (right on top of the page, the larger one, etc.) is a good practice</li>
+        <li>If, in the following pages, you notice an article you have already clicked, it would be better if you click it again. This point does not mean that you are required to inspect all the following page seeking for an already clicked articles, but just if you notice them</li>
+      </ul>
+    </div>
+    <div class="col-sm-6">
+      <br>
+      <br>
+      <br>
+      <ul>
+        <li>For each experience you complete, a data set is going to be saved on the web server</li>
+        <li>The more are the experiences you complete, the bigger is the help you are giving me for my final project</li>
+        <li>The experiences are completely anonymous</li>
+      </ul>
+    </div>
+  </div>
+  </div>
+
+  </div>
+
+  </div>
+
+
+
+<script>
+  var clicked = false;
+  function startExperience(){
+    window.location =  window.location + "/get_started";
+  }
+
+  var page_location = String(window.location);
+  var index = page_location.indexOf("/", 7);
+  var server_location = page_location.slice(0, index + 1);
+
+  var elem = document.getElementById("link1");
+  elem.href = server_location;
+
+  var elem = document.getElementById("link2");
+  elem.href = server_location + "instructions";
+
+  var elem = document.getElementById("link3");
+  elem.href = server_location + "credits";
+</script>
+
+
+
+
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+  </body>
+</html>

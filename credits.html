@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title>AI Article Recommendation</title>
+  </head>
+  <body>
+
+    <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
+  <a class="navbar-brand mb-0 h1">
+    AI Article Recommendation</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item">
+        <a id="link1" class="nav-link" href="http://localhost:8000">Who Am I<span class="sr-only">(current)</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="link2" href="http://localhost:8000/istructions">Instructions</a>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" id="link3" href="http://localhost:8000/credits">
+          Credits
+        </a>
+      </li>
+    </ul>
+    <button class="btn btn-outline-success my-2 my-sm-0" data-toggle="modal" data-target="#exampleModal">Get Started!</button>
+  </div>
+</nav>
+<br>
+<br>
+<br>
+
+
+<div class="container">
+  <div class="row">
+    <div class="col-sm-6">
+      <br>
+      <h1>Credits</h1>
+      Tutte le notizie presenti in questo semplice mock-up sono state ottenute visitando il sito FlipBoard.com.
+      <br>
+      All the articles present in this simple mock-up have been obtained from Flipboard.com website, check it out.
+    </div>
+    <div class="col-sm-6 text-center">
+      <br>
+      <br>
+      <br>
+      <br>
+      <br>
+      <br>
+      <img id="flip-logo" class="img-fluid" src="" alt="Responsive image" onclick=flipClick() onmouseover="" style="cursor: pointer;" height="200px" width="200px">
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Before To Start...</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        Assicurati di aver letto attentamente le istruzioni prima di cominciare!
+        <br>
+        Make sure to carefully read the instructions before to start!
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick=instructions()>Instructions</button>
+        <button type="button" class="btn btn-outline-success my-2 my-sm-0" onclick=startExperience()>Get Started!</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  var clicked = false;
+  function startExperience(){
+    window.location =  window.location + "/get_started";
+  }
+  function instructions(){
+    window.location =  window.location + "/instructions";
+  }
+
+  function flipClick(){
+    window.location = "http://flipboard.com";
+  }
+
+  var page_location = String(window.location);
+  var index = page_location.indexOf("/", 7);
+  var server_location = page_location.slice(0, index + 1);
+
+  var elem = document.getElementById("link1");
+  elem.href = server_location;
+
+  var elem = document.getElementById("link2");
+  elem.href = server_location + "instructions";
+
+  var elem = document.getElementById("link3");
+  elem.href = server_location + "credits";
+
+  var elem = document.getElementById("flip-logo");
+  elem.src = server_location + "News-AdsApp-Copia/Logo-FlipBoard.png/image"
+</script>
+
+
+
+
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+  </body>
+</html>

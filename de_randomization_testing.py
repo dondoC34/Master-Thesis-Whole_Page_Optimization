@@ -85,11 +85,12 @@ if __name__ == "__main__":
     real_slot_promenances = [0.7, 0.8, 0.5, 0.3, 0.2, 0.4, 0.3, 0.1]
 
     categories = ["cibo", "gossip", "politic"]
-    diversity_percentage_for_category = 2.5
+    diversity_percentage_for_category = 5
     promenance_percentage_value = diversity_percentage_for_category / 100 * sum(real_slot_promenances)
     allocation_diversity_bounds = (promenance_percentage_value, promenance_percentage_value, promenance_percentage_value)
-    iterations = 40000
-    user = SyntheticUser(23, "M", 35, "C")
+    iterations = 10000
+    user = SyntheticUser(23, "F", 80, "C")
+    user.user_quality_measure = [0.5, 0.6, 0.6, 0.45, 0.45, 0.4]
     news_per_category = len(real_slot_promenances)
     learner_rand_1 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
                                  real_slot_promenances=real_slot_promenances,
@@ -120,10 +121,10 @@ if __name__ == "__main__":
 
 
     # READ THE WEIGHTED BETA MATRIX FROM A FILE TO HAVE THE BETAS DISTRIBUTION BE DIFFERENT FROM JUST A UNIFORM
-    learner_rand_1.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
-    learner_rand_2.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
-    learner_rand_3.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
-    standard_learner.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="")
+    learner_rand_1.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="Saved-News_W-Beta/")
+    learner_rand_2.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="Saved-News_W-Beta/")
+    learner_rand_3.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="Saved-News_W-Beta/")
+    standard_learner.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="Saved-News_W-Beta/")
 
     # CREATE AND FILL THE NEWS POOL OF EACH LEARNER
     news_pool = []
@@ -169,7 +170,7 @@ if __name__ == "__main__":
 
         news_category_in_page = [0] * len(categories)
         allocation_rewards = []
-        if i % 3 == 0:
+        if i % 4 == 0:
             promenance_per_category = [0] * len(categories)
             allocation = learner_rand_1.find_best_allocation(user=user, update_assignment_matrices=False)
             allocations_count_rand_1 += 1
@@ -187,7 +188,7 @@ if __name__ == "__main__":
             page_reward_rand_1.append(sum(np.array(allocation_rewards) * np.array(real_slot_promenances)))
             page_diversity_rand_1.append(sum(news_category_in_page))
 
-        elif i % 3 == 1:
+        elif i % 4 == 1:
             promenance_per_category = [0] * len(categories)
             allocation = learner_rand_2.find_best_allocation(user=user, update_assignment_matrices=False)
             allocations_count_rand_2 += 1
@@ -204,7 +205,7 @@ if __name__ == "__main__":
 
             page_reward_rand_2.append(sum(np.array(allocation_rewards) * np.array(real_slot_promenances)))
             page_diversity_rand_2.append(sum(news_category_in_page))
-        elif i % 4 == 0:
+        elif i % 4 == 2:
             allocation = standard_learner.find_best_allocation(user=user, update_assignment_matrices=False)
             allocations_count_standard += 1
             for elem in allocation:
@@ -218,20 +219,6 @@ if __name__ == "__main__":
 
             page_reward_standard.append(sum(np.array(allocation_rewards) * np.array(real_slot_promenances)))
             page_diversity_standard.append(sum(news_category_in_page))
-        elif (i % 5 == 0) and False:
-            allocation = learner_rand_2.find_best_allocation(user=user, update_assignment_matrices=False,
-                                                             continuity_relaxation=False)
-            allocations_count_ilp += 1
-            for elem in allocation:
-                click, reward = user.click_news(elem)
-                allocation_rewards.append(reward)
-                category_index = categories.index(elem.news_category)
-                news_category_in_page[category_index] = 1
-                news_slot = allocation.index(elem)
-                allocated_promenance_per_category_ilp[category_index] += real_slot_promenances[news_slot]
-
-            page_reward_ilp.append(sum(np.array(allocation_rewards) * np.array(real_slot_promenances)))
-            page_diversity_ilp.append(sum(news_category_in_page))
         else:
             promenance_per_category = [0] * len(categories)
             allocation = learner_rand_3.find_best_allocation(user=user, update_assignment_matrices=False)
@@ -266,13 +253,6 @@ if __name__ == "__main__":
     print("Standard quality metrics:")
     print("Avg page reward: " + str(np.mean(page_reward_standard)))
     print("Avg page diversity: " + str(np.mean(page_diversity_standard)))
-    file = open("de-Rand-Performances/de-rand-metrics.txt", "a")
-    file.write(str(diversity_percentage_for_category) + "," + str(len(real_slot_promenances)) + " 3cat\n")
-    file.write(str(np.mean(page_reward_rand_1)) + "," + str(np.mean(page_diversity_rand_1) / 3 * 100) + "\n")
-    file.write(str(np.mean(page_reward_rand_2)) + "," + str(np.mean(page_diversity_rand_2) / 3 * 100) + "\n")
-    file.write(str(np.mean(page_reward_rand_3)) + "," + str(np.mean(page_diversity_rand_3) / 3 * 100) + "\n")
-    file.write(str(np.mean(page_reward_standard)) + "," + str(np.mean(page_diversity_standard) / 3 * 100) + "\n")
-    file.close()
     print("--------------------------------")
     print("ILP allocation quality metrics:")
     print("Avg page reward: " + str(np.mean(page_reward_ilp)))
@@ -287,7 +267,13 @@ if __name__ == "__main__":
     print("Standard Avg promenance per category: " + str(
         np.array(allocated_promenance_per_category_standard) * 1 / allocations_count_standard))
     print("--------------- T test --------------------")
-
+    file = open("de-Rand-Performances/de-rand-metrics.txt", "a")
+    file.write("C= " + str(len(categories)) + ", L= " + str(len(real_slot_promenances)) + "Psi= " + str(diversity_percentage_for_category) + "\n")
+    file.write(str(np.mean(page_reward_rand_1)) + "," + str(np.mean(page_diversity_rand_1) / len(categories) * 100) + "\n")
+    file.write(str(np.mean(page_reward_rand_2)) + "," + str(np.mean(page_diversity_rand_2) / len(categories) * 100) + "\n")
+    file.write(str(np.mean(page_reward_rand_3)) + "," + str(np.mean(page_diversity_rand_3) / len(categories) * 100) + "\n")
+    file.write(str(np.mean(page_reward_standard)) + "," + str(np.mean(page_diversity_standard) / len(categories) * 100) + "\n")
+    file.close()
     for i in range(len(categories)):
         x = [y[i] for y in sample_rand_1]
         mean = np.mean(x)

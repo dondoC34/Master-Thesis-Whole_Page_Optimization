@@ -236,24 +236,50 @@ def write_random_users_in_file(filename, number_of_users):
 
 if __name__ == "__main__":
 
-    file = open("site-performances/site_avg_reward.txt", "r")
-    res = file.read().splitlines()[0]
-    res = res.split(",")
-    res = list(map(float, res))
-    smoother = LineSmoother(res, 4, [[5, 1], [7, 2], [20, 2], [30, 3]])
-    # res = smoother.smooth_line()
-    deletion = []
-    for i in range(len(res)):
-        if res[i] > 0.55:
-            deletion.append(i)
-    deletion.sort(reverse=True)
-    for elem in deletion:
-        res.__delitem__(elem)
-    plt.plot(res, linestyle="dotted", linewidth=2)
-    plt.title("Multiple Users: Clustering Effect")
-    plt.ylabel("Expected Reward")
-    plt.xlabel("Interaction")
-    plt.show()
+    def slot_avg_clicks(file):
+        clicks = []
+        res = file.readlines()
+        for row in res:
+            clicked = row.split("-")[0].split(",")
+            clicked = list(map(float, clicked))
+            clicks.append(clicked)
+        plt.plot(np.mean(clicks, axis=0))
+        plt.show()
+
+
+    def boxplot_click_dist(file):
+        clicks = []
+        res = file.readlines()
+        clicked_slots = []
+        for _ in range(10):
+            clicked_slots.append([])
+
+        for row in res:
+            pages = row.split("-")[1].split(";")
+            tmp_clicked_slots = np.array([0] * 10)
+            for page in pages:
+                tmp = page.split(",")
+                for i in range(len(tmp)):
+                    if tmp[i] != "0":
+                        tmp_clicked_slots[i] += 1
+
+            tmp_clicked_slots = tmp_clicked_slots / sum(tmp_clicked_slots)
+            clicks.append(tmp_clicked_slots.copy())
+
+        for elem in clicks:
+            for i in range(len(elem)):
+                if elem[i] != 0:
+                    clicked_slots[i].append(elem[i])
+
+        sns.swarmplot(data=clicked_slots)
+        sns.boxplot(data=clicked_slots)
+        plt.show()
+
+
+    file = open("practical_results.txt", "r")
+    boxplot_click_dist(file)
+
+
 
 
 
