@@ -13,7 +13,7 @@ timestamps = []
 iterations = []
 user_data = []
 real_slot_promenances = [0.9, 0.8, 0.8, 0.7, 0.7, 0.7, 0.6, 0.6, 0.6, 0.4, 0.5, 0.5, 0.4, 0.2, 0.3, 0.3, 0.1]
-categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"]
+categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
 diversity_percentage = 7.5
 diversity_percentage_for_category = diversity_percentage / 100 * sum(real_slot_promenances)
 allocation_diversity_bounds = (diversity_percentage_for_category, diversity_percentage_for_category) * 3
@@ -188,7 +188,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     response = encode_html("end_page.html")
                     self.wfile.write(response)
-                    file = open("WebApp_Results/no_clustering_results.txt", "a")
+                    file = open("WebApp_Results/result" + user_key + str(int(time.time())) + ".txt", "w")
                     user_data_clicks = user_data[user_index][2]
                     file.write(str(user_data_clicks[0]))
                     for i in range(1, len(user_data_clicks)):
@@ -229,7 +229,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                         if j < len(user_data_img_times):
                             file.write(";")
 
-                    file.write("\n")
                     file.close()
 
             except ValueError:
@@ -291,5 +290,5 @@ class RequestHandler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     PORT = 46765
     server = HTTPServer(("", PORT), RequestHandler)
-    print("server running")
+    print("server running on port " + str(PORT))
     server.serve_forever()
