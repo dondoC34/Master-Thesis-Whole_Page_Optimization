@@ -1,8 +1,9 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
-import random, string
+import string
 import simplejson
 from news_learner import *
+from numpy import random
 
 
 counter = [0]
@@ -90,7 +91,7 @@ def encode_news_page(html_file, user_id, news_list):
     return result.encode()
 
 def key_gen(length):
-    key = "".join(random.choices(string.ascii_letters + string.digits, k=length))
+    key = "".join(random.choice(string.ascii_letters + string.digits, size=length))
     return key
 
 
@@ -283,7 +284,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    PORT = 46783
+    PORT = 46765
     server = HTTPServer(("", PORT), RequestHandler)
     print("server running")
     server.serve_forever()
