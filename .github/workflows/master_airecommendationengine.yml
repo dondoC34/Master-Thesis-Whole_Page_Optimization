@@ -33,5 +33,5 @@ jobs:
       with:
         app-name: 'airecommendationengine'
         slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_2f31e546c4314083a166dbe039c180ce }}
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_2947310f5f704899b4791c2d302e4cde }}
         package: './myapp.zip'
