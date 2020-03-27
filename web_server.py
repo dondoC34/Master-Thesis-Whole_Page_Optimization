@@ -36,8 +36,11 @@ for category in categories:
                                         "tech-4", "tech-10", "tech-14", "tech-20", "cibo-41", "cibo-42",
                                         "gossip-41", "gossip-42", "politic-41", "politic-42", "politic-43", "politic-44",
                                         "politic-45", "scienza-41", "scienza-42", "scienza-43", "scienza-44", "scienza-45",
-                                        "sport-41", "sport-42", "sport-43", "sport-44", "sport-45", "tech-41", "tech-42",
-                                        "tech-43", "tech-44", "tech-45"]:
+                                        "sport-41", "sport-42", "sport-43", "sport-44", "sport-45", "sport-46", "tech-41", "tech-42",
+                                        "tech-43", "tech-44", "tech-45",
+                                        "scienza-61", "scienza-62", "sport-61", "sport-62", "sport-63", "sport-64",
+                                        "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64"
+                                        ]:
 
             news_pool.__delitem__(-1)
 
@@ -53,8 +56,10 @@ for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
                                         "tech-4", "tech-10", "tech-14", "tech-20", "cibo-41", "cibo-42",
                                         "gossip-41", "gossip-42", "politic-41", "politic-42", "politic-43", "politic-44",
                                         "politic-45", "scienza-41", "scienza-42", "scienza-43", "scienza-44", "scienza-45",
-                                        "sport-41", "sport-42", "sport-43", "sport-44", "sport-45", "tech-41", "tech-42",
-                                        "tech-43", "tech-44", "tech-45"]:
+                                        "sport-41", "sport-42", "sport-43", "sport-44", "sport-45", "sport-46", "tech-41", "tech-42",
+                                        "tech-43", "tech-44", "tech-45",
+                                        "scienza-61", "scienza-62", "sport-61", "sport-62", "sport-63", "sport-64",
+                                        "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64"]:
 
             news = News(news_id=id, news_name=category + "-" + str(id))
             news_index = categories.index(news.news_category)
@@ -80,8 +85,8 @@ def encode_news_page(html_file, user_id, news_list):
     for line in lines:
         result += line
 
-    result = result[0:5426 + 10] + "'" + str(user_id) + "'" + result[5426 + 10::]
-    result = result[0:5599 + 12] + str(news_names) + result[5599 + 12::]
+    result = result[0:5489 + 10] + "'" + str(user_id) + "'" + result[5489 + 10::]
+    result = result[0:5662 + 12] + str(news_names) + result[5662 + 12::]
     return result.encode()
 
 def key_gen(length):
