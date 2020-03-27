@@ -91,8 +91,13 @@ def encode_news_page(html_file, user_id, news_list):
     return result.encode()
 
 def key_gen(length):
-    key = "".join(random.choice(string.ascii_letters + string.digits, size=length))
-    return key
+     values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, "a", "b", "d", "e"]
+     final_values = np.random.choice(values, size=length)
+     key = ""
+     for i in range(length):
+        key += str(final_values[i])
+
+     return key
 
 
 class RequestHandler(BaseHTTPRequestHandler):
