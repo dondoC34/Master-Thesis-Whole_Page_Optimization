@@ -381,8 +381,6 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     PORT = 46765
-    a, b, c = extract_statistics(2)
-    print(a, b, c)
     server = HTTPServer(("", PORT), RequestHandler)
     print("server running on port " + str(PORT))
     server.serve_forever()
