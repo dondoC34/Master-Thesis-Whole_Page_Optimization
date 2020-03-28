@@ -8,6 +8,7 @@ from telegram.bot import TelegramBot
 import numbers
 
 num_of_samples = [0]
+last_visit = [0.0]
 user_codes = []
 learners = []
 timestamps = []
@@ -93,6 +94,43 @@ def encode_news_page(html_file, user_id, news_list):
     return result.encode()
 
 
+def extract_statistics(num_of_samples):
+    result = []
+    image_inspection_times = []
+    clicked_categories = [0] * len(categories)
+    clicks_per_page = []
+
+    for id in range(1, num_of_samples + 1):
+        file = open("WebApp_Results/result" + str(id) + ".txt", "r").read()
+        file = file.split("-")
+
+        clicks = file[0].split(",")
+        clicks = list(map(float, clicks))
+        clicks_per_page.append(clicks.copy())
+
+        clicked_cat_per_page = file[1].split(";")
+        for page in clicked_cat_per_page:
+            tmp = page.split(",")
+            for elem in tmp:
+                if elem != "0":
+                    cat_index = categories.index(elem)
+                    clicked_categories[cat_index] += 1
+
+        image_insp = file[4].split(";")
+        for page in image_insp:
+            tmp = page.split(",")
+            tmp_insp_times = list(map(float, tmp))
+            if sum(tmp_insp_times) > 0:
+                tmp_insp_times = np.array(tmp_insp_times) / sum(tmp_insp_times)
+            image_inspection_times. append(tmp_insp_times.copy())
+
+    image_inspection_times = np.mean(image_inspection_times, axis=0)
+    clicked_categories = np.array(clicked_categories) / sum(clicked_categories)
+    clicks_per_page = np.mean(clicks_per_page, axis=0)
+
+    return clicks_per_page, clicked_categories, image_inspection_times
+
+
 def key_gen(length):
     values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, "a", "b", "d", "c", "e", "f", "g", "h", "i", "l", "m", "n", "o", "p", "q",
               "r", "s", "t", "u", "v", "w", "x", "y", "z", "j", "k"]
@@ -138,6 +176,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             f.close()
 
         elif self.path.endswith("/get_started"):
+            last_visit.__delitem__(0)
+            last_visit.append(time.time())
             self.send_header("content-type", "text/html")
             self.end_headers()
             user_key = key_gen(16)
@@ -270,7 +310,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             response = encode_html("session_expired_page.html")
             self.wfile.write(response)
         elif self.path.endswith("/statistics_hdjdidiennsjdiwkakosoeprpriufncnaggagwiwoqlwlenxbhcufie"):
-            pass
+
+            clicks, cats, times = extract_statistics(num_of_samples[0])
+
+            self.loggerBot.telegram_bot_sendtext("Average clicks per page: " + str(clicks) + "\n" +
+                                                 "Fraction of clicks per category: " + str(cats) + "\n" +
+                                                 "Prominence estimation: " + str(times) + "\n" +
+                                                 "Last visit: " + str((time.time() - last_visit[0]) / 60) + " minutes ago")
         else:
             if not self.path.endswith("/favicon.ico"):
                 self.loggerBot.telegram_bot_sendtext("Bad Request: " + self.path)
@@ -335,6 +381,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     PORT = 46765
+    a, b, c = extract_statistics(2)
+    print(a, b, c)
     server = HTTPServer(("", PORT), RequestHandler)
     print("server running on port " + str(PORT))
     server.serve_forever()
