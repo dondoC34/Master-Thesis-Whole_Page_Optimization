@@ -1,5 +1,6 @@
 from telegram import bot
 import time
+import os
 
 bot_tg = bot.TelegramBot()
 
@@ -21,6 +22,8 @@ while True:
                             bot_tg.telegram_bot_sendtext("Taki taki taki")
                         elif u["message"]["text"] == "/lepalle":
                             bot_tg.telegram_bot_sendtext("Tutte vicine alle buche")
+                        elif u["message"]["text"] == "/disk":
+                            bot_tg.telegram_bot_sendtext(str(os.system("df -m")))
     except Exception:
         print("Exception")
     finally:
