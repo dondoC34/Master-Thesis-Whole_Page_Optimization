@@ -4,6 +4,7 @@ import string
 import simplejson
 from news_learner import *
 from numpy import random
+from telegram.bot import TelegramBot
 
 
 counter = [0]
@@ -102,7 +103,10 @@ def key_gen(length):
 
 class RequestHandler(BaseHTTPRequestHandler):
 
+    loggerBot = TelegramBot()
+
     def do_GET(self):
+        self.loggerBot.telegram_bot_sendtext("WE HAVE VISITORS!!!!")
         self.send_response(200)
         if self.path.endswith("/"):
             self.send_header("content-type", "text/html")
