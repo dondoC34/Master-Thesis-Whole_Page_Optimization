@@ -23,7 +23,8 @@ while True:
                         elif u["message"]["text"] == "/lepalle":
                             bot_tg.telegram_bot_sendtext("Tutte vicine alle buche")
                         elif u["message"]["text"] == "/disk":
-                            bot_tg.telegram_bot_sendtext(str(os.system("df -m")))
+                            os.system("df -m > mem.txt")
+                            bot_tg.telegram_bot_sendtext(str(open("mem.txt").readlines()))
     except Exception:
         print("Exception")
     finally:
