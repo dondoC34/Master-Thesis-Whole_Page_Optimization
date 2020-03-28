@@ -24,7 +24,9 @@ while True:
                             bot_tg.telegram_bot_sendtext("Tutte vicine alle buche")
                         elif u["message"]["text"] == "/disk":
                             os.system("df -m > mem.txt")
-                            bot_tg.telegram_bot_sendtext(str(open("mem.txt").readlines()))
+                            lines = open("mem.txt").readlines()
+                            for l in lines:
+                                bot_tg.telegram_bot_sendtext(l)
     except Exception:
         print("Exception")
     finally:
