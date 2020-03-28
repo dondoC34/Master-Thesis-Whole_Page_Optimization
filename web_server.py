@@ -5,9 +5,9 @@ import simplejson
 from news_learner import *
 from numpy import random
 from telegram.bot import TelegramBot
+import numbers
 
-
-counter = [0]
+num_of_samples = [0]
 user_codes = []
 learners = []
 timestamps = []
@@ -41,8 +41,8 @@ for category in categories:
                                         "sport-41", "sport-42", "sport-43", "sport-44", "sport-45", "sport-46", "tech-41", "tech-42",
                                         "tech-43", "tech-44", "tech-45",
                                         "scienza-61", "scienza-62", "sport-61", "sport-62", "sport-63", "sport-64",
-                                        "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64"
-                                        ]:
+                                        "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64",
+                                        "cibo-65", "gossip-62"]:
 
             news_pool.__delitem__(-1)
 
@@ -61,7 +61,8 @@ for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
                                         "sport-41", "sport-42", "sport-43", "sport-44", "sport-45", "sport-46", "tech-41", "tech-42",
                                         "tech-43", "tech-44", "tech-45",
                                         "scienza-61", "scienza-62", "sport-61", "sport-62", "sport-63", "sport-64",
-                                        "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64"]:
+                                        "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64",
+                                        "cibo-65", "gossip-62"]:
 
             news = News(news_id=id, news_name=category + "-" + str(id))
             news_index = categories.index(news.news_category)
@@ -91,14 +92,16 @@ def encode_news_page(html_file, user_id, news_list):
     result = result[0:5662 + 12] + str(news_names) + result[5662 + 12::]
     return result.encode()
 
+
 def key_gen(length):
-     values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, "a", "b", "d", "e"]
-     final_values = np.random.choice(values, size=length)
-     key = ""
-     for i in range(length):
+    values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, "a", "b", "d", "c", "e", "f", "g", "h", "i", "l", "m", "n", "o", "p", "q",
+              "r", "s", "t", "u", "v", "w", "x", "y", "z", "j", "k"]
+    final_values = np.random.choice(values, size=length)
+    key = ""
+    for i in range(length):
         key += str(final_values[i])
 
-     return key
+    return key
 
 
 class RequestHandler(BaseHTTPRequestHandler):
@@ -106,7 +109,6 @@ class RequestHandler(BaseHTTPRequestHandler):
     loggerBot = TelegramBot()
 
     def do_GET(self):
-        self.loggerBot.telegram_bot_sendtext("WE HAVE VISITORS!!!!")
         self.send_response(200)
         if self.path.endswith("/"):
             self.send_header("content-type", "text/html")
@@ -143,6 +145,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                 user_key = key_gen(16)
 
             user_codes.append(user_key)
+            if len(user_codes) > 200:
+                self.loggerBot.telegram_bot_sendtext("Many Active Users: " + str(len(user_codes)))
+
+            if np.random.binomial(1, 0.1) == 1:
+                self.loggerBot.telegram_bot_sendtext("Number Of Active Users: " + str(len(user_codes)))
+
             iterations.append(0)
             user_data.append([])
             for _ in range(5):
@@ -175,10 +183,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 user_data.__delitem__(elem)
 
         elif self.path.endswith("/next"):
-            user_key = self.path.split("/")[1]
-            self.send_header("content-type", "text/html")
-            self.end_headers()
             try:
+                self.send_header("content-type", "text/html")
+                self.end_headers()
+                user_key = self.path.split("/")[1]
                 user_index = user_codes.index(user_key)
                 iterations[user_index] += 1
                 if iterations[user_index] < 10:
@@ -192,8 +200,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     response = encode_html("end_page.html")
                     self.wfile.write(response)
+                    num_of_samples.append(num_of_samples[-1] + 1)
+                    num_of_samples.pop(0)
+                    self.loggerBot.telegram_bot_sendtext("New Sample! Total Number Of Samples: " + str(num_of_samples[0]))
                     file = open("WebApp_Results/result" + user_key + str(int(time.time())) + ".txt", "w")
                     user_data_clicks = user_data[user_index][2]
+                    self.loggerBot.telegram_bot_sendtext("Clicks: " + str(user_data_clicks))
                     file.write(str(user_data_clicks[0]))
                     for i in range(1, len(user_data_clicks)):
                         file.write("," + str(user_data_clicks[i]))
@@ -234,9 +246,17 @@ class RequestHandler(BaseHTTPRequestHandler):
                             file.write(";")
 
                     file.close()
+                    learners.__delitem__(user_index)
+                    timestamps.__delitem__(user_index)
+                    user_codes.__delitem__(user_index)
+                    iterations.__delitem__(user_index)
+                    user_data.__delitem__(user_index)
 
             except ValueError:
                 response = encode_html("session_expired_page.html")
+                self.wfile.write(response)
+            except IndexError:
+                response = encode_html("zanero_page.html")
                 self.wfile.write(response)
 
         elif self.path.endswith("/end"):
@@ -250,6 +270,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             response = encode_html("session_expired_page.html")
             self.wfile.write(response)
         else:
+            self.loggerBot.telegram_bot_sendtext("Bad Request: " + self.path)
             self.send_header("content-type", "text/html")
             self.end_headers()
             response = encode_html("zanero_page.html")
@@ -258,14 +279,19 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         data_string = self.rfile.read(int(self.headers['Content-Length']))
         data = simplejson.loads(data_string)
-        user_id = data["id"]
-        user_clicks = data["clicked"]
+
         try:
+            user_id = data["id"]
+            user_clicks = data["clicked"]
             user_index = user_codes.index(user_id)
             user_alloc = user_data[user_index][0][-1]
 
             num_of_clicks = 0
             clicked_elements = []
+            for elem in user_clicks:
+                if (elem is not True) and (elem is not False):
+                    raise KeyError()
+
             for i in range(len(user_clicks)):
                 if user_clicks[i]:
                     num_of_clicks += 1
@@ -281,7 +307,13 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             user_data[user_index][1].append(clicked_elements.copy())
             user_data[user_index][2].append(num_of_clicks)
-            user_data[user_index][3].append(data["inspection_time"])
+            if isinstance(data["inspection_time"], numbers.Number):
+                user_data[user_index][3].append(data["inspection_time"])
+            else:
+                raise KeyError()
+            for elem in data["image_inspection_times"]:
+                if not isinstance(elem, numbers.Number):
+                    raise KeyError()
             user_data[user_index][4].append(data["image_inspection_times"])
 
         except ValueError:
@@ -289,6 +321,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_header("content-type", "text/html")
             self.end_headers()
             self.wfile.write("expired".encode())
+
+        except KeyError:
+            self.send_response(200)
+            self.send_header("content-type", "text/html")
+            self.end_headers()
+            self.wfile.write("bad_man".encode())
+            self.loggerBot.telegram_bot_sendtext("Bad Post Request: " + str(data))
 
 
 if __name__ == "__main__":

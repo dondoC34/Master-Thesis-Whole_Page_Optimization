@@ -1,5 +1,5 @@
 import requests
-
+from requests.exceptions import *
 
 DONDONYBot_TOKEN = "1110199189:AAEeWiXJuDVKFdcaDX_pWQN2ntU4ALwX8MI"
 
@@ -13,11 +13,16 @@ class TelegramBot:
         self.chatId = CHATID
 
     def telegram_bot_sendtext(self, bot_message):
-        send_text = 'https://api.telegram.org/bot' + self.id + '/sendMessage?chat_id=' + self.chatId + '&parse_mode=Markdown&text=' + bot_message
 
-        response = requests.get(send_text)
+        try:
+            send_text = 'https://api.telegram.org/bot' + self.id + '/sendMessage?chat_id=' + self.chatId + '&parse_mode=Markdown&text=' + bot_message
 
-        return response.json()
+            response = requests.get(send_text)
+
+            return response.json()
+
+        except RequestException:
+            pass
 
     def telegram_bot_getUpdates(self):
         send_text = 'https://api.telegram.org/bot' + self.id + '/getUpdates'
