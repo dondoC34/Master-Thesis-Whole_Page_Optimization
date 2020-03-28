@@ -35,10 +35,13 @@ while True:
                                 bot_tg.telegram_bot_sendtext("No")
                         elif u["message"]["text"].startswith("/execute"):
                             command = u["message"]["text"][9:]
-                            os.system(command + " > custom.txt")
-                            lines = open("custom.txt").readlines()
-                            for l in lines:
-                                bot_tg.telegram_bot_sendtext(l)
+                            if "rm" in command:
+                                bot_tg.telegram_bot_sendtext("Non lo faró")
+                            else:
+                                os.system(command + " > custom.txt")
+                                lines = open("custom.txt").readlines()
+                                for l in lines:
+                                    bot_tg.telegram_bot_sendtext(l)
 
     except Exception:
         print("Exception")
