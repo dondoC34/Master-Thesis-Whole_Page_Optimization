@@ -2,6 +2,8 @@ from telegram import bot
 import time
 import os
 import numpy as np
+import requests
+
 
 bot_tg = bot.TelegramBot()
 
@@ -40,8 +42,14 @@ while True:
                             else:
                                 os.system(command + " > custom.txt")
                                 lines = open("custom.txt").readlines()
-                                for l in lines:
-                                    bot_tg.telegram_bot_sendtext(l)
+                                bot_tg.telegram_bot_sendtext(''.join(lines))
+                        elif u["message"]["text"] == "/stats":
+                            try:
+                                url = "http://35.210.80.205:46765/statistics_hdjdidiennsjdiwkakosoeprpriufncnaggagwiwoqlwlenxbhcufie"
+                                requests.get(url)
+
+                            except:
+                                pass
 
     except Exception:
         print("Exception")
