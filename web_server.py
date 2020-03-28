@@ -202,10 +202,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.wfile.write(response)
                     num_of_samples.append(num_of_samples[-1] + 1)
                     num_of_samples.pop(0)
-                    self.loggerBot.telegram_bot_sendtext("New Sample! Total Number Of Samples: " + str(num_of_samples[0]))
                     file = open("WebApp_Results/result" + user_key + str(int(time.time())) + ".txt", "w")
                     user_data_clicks = user_data[user_index][2]
-                    self.loggerBot.telegram_bot_sendtext("Clicks: " + str(user_data_clicks))
+                    self.loggerBot.telegram_bot_sendtext("New Sample! Total Number Of Samples: " + str(num_of_samples[0]) + "\nClicks: " + str(user_data_clicks))
                     file.write(str(user_data_clicks[0]))
                     for i in range(1, len(user_data_clicks)):
                         file.write("," + str(user_data_clicks[i]))
@@ -270,11 +269,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             response = encode_html("session_expired_page.html")
             self.wfile.write(response)
         else:
-            self.loggerBot.telegram_bot_sendtext("Bad Request: " + self.path)
-            self.send_header("content-type", "text/html")
-            self.end_headers()
-            response = encode_html("zanero_page.html")
-            self.wfile.write(response)
+            if not self.path.endswith("/favicon.ico"):
+                self.loggerBot.telegram_bot_sendtext("Bad Request: " + self.path)
+                self.send_header("content-type", "text/html")
+                self.end_headers()
+                response = encode_html("zanero_page.html")
+                self.wfile.write(response)
 
     def do_POST(self):
         data_string = self.rfile.read(int(self.headers['Content-Length']))
