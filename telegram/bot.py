@@ -19,9 +19,11 @@ class TelegramBot:
 
         return response.json()
 
-    def telegram_bot_getUpdates(self):
-        send_text = 'https://api.telegram.org/bot' + self.id + '/getUpdates'
+    def telegram_bot_getUpdates(self, offset=None):
+        send_text = 'https://api.telegram.org/bot' + self.id + '/getUpdates' + ("" if offset is None else "?offset=" + str(offset))
 
         response = requests.get(send_text)
 
         return response.json()
+
+
