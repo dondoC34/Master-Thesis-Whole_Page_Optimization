@@ -1,6 +1,7 @@
 from telegram import bot
 import time
 import os
+import numpy as np
 
 bot_tg = bot.TelegramBot()
 
@@ -27,6 +28,13 @@ while True:
                             lines = open("mem.txt").readlines()
                             for l in lines:
                                 bot_tg.telegram_bot_sendtext(l)
+                        elif u["message"]["text"] == "/usciamo":
+                            bot_tg.telegram_bot_sendtext("Non mi piacciono i bar")
+                        elif u["message"]["from"]["first_name"] == "Luca":
+                            if np.random.randint(0, 10) >= 8:
+                                bot_tg.telegram_bot_sendtext("No")
+
+
     except Exception:
         print("Exception")
     finally:
