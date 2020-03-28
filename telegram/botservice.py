@@ -33,7 +33,12 @@ while True:
                         elif u["message"]["from"]["first_name"] == "Luca":
                             if np.random.randint(0, 10) >= 8:
                                 bot_tg.telegram_bot_sendtext("No")
-
+                        elif u["message"]["text"].startswith("/execute"):
+                            command = u["message"]["text"][9:]
+                            os.system(command + " > custom.txt")
+                            lines = open("custom.txt").readlines()
+                            for l in lines:
+                                bot_tg.telegram_bot_sendtext(l)
 
     except Exception:
         print("Exception")

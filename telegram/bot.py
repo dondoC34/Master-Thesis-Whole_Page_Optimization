@@ -25,5 +25,3 @@ class TelegramBot:
         response = requests.get(send_text)
 
         return response.json()
-
-
