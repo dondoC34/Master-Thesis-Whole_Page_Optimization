@@ -8,6 +8,10 @@ from telegram.bot import TelegramBot
 import numbers
 
 num_of_samples = [0]
+clicks_average = []
+last_visit = []
+clicked_categories = [0] * len(categories)
+prominence_estimation = []
 user_codes = []
 learners = []
 timestamps = []
@@ -140,6 +144,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         elif self.path.endswith("/get_started"):
             self.send_header("content-type", "text/html")
             self.end_headers()
+            if len(last_visit) > 0:
+                last_visit.__delitem__(0)
+                last_visit.append(time.time())
+            else:
+                last_visit.append(time.time())
             user_key = key_gen(16)
             while user_key in user_codes:
                 user_key = key_gen(16)
@@ -213,7 +222,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                     user_data_clicked_cats = user_data[user_index][1]
                     for page_clicked_cats in user_data_clicked_cats:
                         file.write(str(page_clicked_cats[0]))
+                        if page_clicked_cats[0] != 0:
+                            cat_index = categories.index(page_clicked_cats[0])
+                            clicked_categories[cat_index] += 1
                         for i in range(1, len(page_clicked_cats)):
+                            if page_clicked_cats[i] != 0:
+                                cat_index = categories.index(page_clicked_cats[i])
+                                clicked_categories[cat_index] += 1
                             file.write("," + str(page_clicked_cats[i]))
                         j += 1
                         if j < len(user_data_clicked_cats):
@@ -240,11 +255,28 @@ class RequestHandler(BaseHTTPRequestHandler):
                         file.write(str(page_insp_times[0]))
                         for i in range(1, len(page_insp_times)):
                             file.write("," + str(page_insp_times[i]))
+                        if len(prominence_estimation) > 0:
+                            if sum(page_insp_times) > 0:
+                                prominence_estimation[0] = (num_of_samples[0] - 1) / num_of_samples[0] * np.array(prominence_estimation[0]) + (np.array(page_insp_times) / sum(page_insp_times)) / num_of_samples[0]
+                            else:
+                                prominence_estimation[0] = (num_of_samples[0] - 1) / num_of_samples[0] * np.array(prominence_estimation[0]) + np.array(page_insp_times) / num_of_samples[0]
+
+                        else:
+                            if sum(page_insp_times) > 0:
+                                prominence_estimation.append((np.array(page_insp_times) / sum(page_insp_times)).copy())
+                            else:
+                                prominence_estimation.append((np.array(page_insp_times).copy()))
                         j += 1
                         if j < len(user_data_img_times):
                             file.write(";")
 
                     file.close()
+
+                    if len(clicks_average) > 0:
+                        clicks_average[0] = (num_of_samples[0] - 1) / num_of_samples[0] * np.array(clicks_average[0]) + np.array(user_data_clicks) / num_of_samples[0]
+                    else:
+                        clicks_average.append(user_data_clicks.copy())
+
                     learners.__delitem__(user_index)
                     timestamps.__delitem__(user_index)
                     user_codes.__delitem__(user_index)
@@ -268,6 +300,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             response = encode_html("session_expired_page.html")
             self.wfile.write(response)
+        elif self.path.endswith("/statistics_hdjdidiennsjdiwkakosoeprpriufncnaggagwiwoqlwlenxbhcufie"):
+
+            self.loggerBot.telegram_bot_sendtext("Total Number Of Samples: " + str(num_of_samples[0]) + "\n" +
+                                                 "Prominence estimation: " + str(list(prominence_estimation)) + "\n" +
+                                                 "Avg. % clicked categories: " + str(np.array(clicked_categories) / sum(clicked_categories)) + "\n" +
+                                                 "Avg. clicks per page: " + str(list(clicks_average)) + "\n" +
+                                                 "Last visit: " + str((time.time() - last_visit[0]) / 60) + " minutes ago")
         else:
             if not self.path.endswith("/favicon.ico"):
                 self.loggerBot.telegram_bot_sendtext("Bad Request: " + self.path)
