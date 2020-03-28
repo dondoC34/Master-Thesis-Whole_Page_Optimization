@@ -211,7 +211,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     self.wfile.write(response)
                     num_of_samples.append(num_of_samples[-1] + 1)
                     num_of_samples.pop(0)
-                    file = open("WebApp_Results/result" + user_key + str(int(time.time())) + ".txt", "w")
+                    file = open("WebApp_Results/result" + str(num_of_samples[0]) + ".txt", "w")
                     user_data_clicks = user_data[user_index][2]
                     self.loggerBot.telegram_bot_sendtext("New Sample! Total Number Of Samples: " + str(num_of_samples[0]) + "\nClicks: " + str(user_data_clicks))
                     file.write(str(user_data_clicks[0]))
