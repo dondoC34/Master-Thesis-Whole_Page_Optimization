@@ -9,6 +9,24 @@ bot_tg = bot.TelegramBot()
 
 offset = 1
 
+def load_cust_commands():
+    try:
+        ccomms = open("custom_commands.txt").readline()
+        return eval(ccomms)
+    except Exception:
+        return dict()
+
+def save_cust_commands(dict_commands):
+    try:
+        ccomms = open("custom_commands.txt", mode="w")
+        ccomms.write(str(dict_commands))
+        ccomms.close()
+    except Exception:
+        pass
+
+
+ccomms = load_cust_commands()
+
 while True:
     try:
         upds = bot_tg.telegram_bot_getUpdates(offset=offset)
@@ -50,6 +68,21 @@ while True:
 
                             except:
                                 pass
+                        elif u["message"]["text"].startswith("/createresponse"):
+                            try:
+                                split = u["message"]["text"].split(" ")
+                                split.pop(0)
+                                if split[0][0] == "/" and len(split[0]) > 1:
+                                    command = split.pop(0)
+                                    ccomms[command] = ' '.join(split)
+                                    save_cust_commands(ccomms)
+                                else:
+                                    bot_tg.telegram_bot_sendtext("The command must start with / and contain at least another character.")
+                            except:
+                                bot_tg.telegram_bot_sendtext("There was a problem with your command.")
+                        elif u["message"]["text"] in ccomms:
+                            bot_tg.telegram_bot_sendtext(ccomms[u["message"]["text"]])
+
 
     except Exception:
         print("Exception")
