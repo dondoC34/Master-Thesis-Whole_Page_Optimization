@@ -76,6 +76,7 @@ while True:
                                     command = split.pop(0)
                                     ccomms[command] = ' '.join(split)
                                     save_cust_commands(ccomms)
+                                    bot_tg.telegram_bot_sendtext("From now I will answer \" " + ccomms[command] + " \n when I receive " + command)
                                 else:
                                     bot_tg.telegram_bot_sendtext("The command must start with / and contain at least another character.")
                             except:
