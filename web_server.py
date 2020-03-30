@@ -318,7 +318,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                                                  "Prominence estimation: " + str(times) + "\n" +
                                                  "Last visit: " + str((time.time() - last_visit[0]) / 60) + " minutes ago")
         else:
-            if not self.path.endswith("/favicon.ico"):
+            if (not self.path.endswith("/favicon.ico")) and (not self.path.endswith("precomposed.png")) and \
+               (not self.path.endswith("120x120.png")) and (not self.path.endswith("icon.png")):
                 self.loggerBot.telegram_bot_sendtext("Bad Request: " + self.path)
                 self.send_header("content-type", "text/html")
                 self.end_headers()
