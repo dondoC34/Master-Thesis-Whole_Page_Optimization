@@ -35,7 +35,16 @@ while True:
                 offset = max(offset, u["update_id"] + 1)
                 if "message" in u and "text" in u["message"]:
                     if int(u["message"]["chat"]["id"]) == int(bot_tg.chatId):
-                        if u["message"]["text"] == "/deleteallsamples":
+                        if u["message"]["from"]["first_name"] == "Luca":
+                            if np.random.randint(0, 10) >= 8:
+                                bot_tg.telegram_bot_sendtext("No")
+                        if u["message"]["text"] == "/commandlist":
+                            lcommands = ["/commandlist", "/deleteallsamples", "/deletelode",
+                                         "/heydondony", "/lepalle", "/usciamo", "/executeprint <command>",
+                                         "/execute <command>", "/stats",
+                                         "/createresponse <command> <response>"] + list(ccomms.keys())
+                            bot_tg.telegram_bot_sendtext('\n'.join(lcommands))
+                        elif u["message"]["text"] == "/deleteallsamples":
                             bot_tg.telegram_bot_sendtext("Done")
                         elif u["message"]["text"] == "/deletelode":
                             bot_tg.telegram_bot_sendtext("There is no lode to delete if Luca doesn't get a lode")
@@ -43,24 +52,23 @@ while True:
                             bot_tg.telegram_bot_sendtext("Taki taki taki")
                         elif u["message"]["text"] == "/lepalle":
                             bot_tg.telegram_bot_sendtext("Tutte vicine alle buche")
-                        elif u["message"]["text"] == "/disk":
-                            os.system("df -m > mem.txt")
-                            lines = open("mem.txt").readlines()
-                            for l in lines:
-                                bot_tg.telegram_bot_sendtext(l)
                         elif u["message"]["text"] == "/usciamo":
                             bot_tg.telegram_bot_sendtext("Non mi piacciono i bar")
-                        elif u["message"]["from"]["first_name"] == "Luca":
-                            if np.random.randint(0, 10) >= 8:
-                                bot_tg.telegram_bot_sendtext("No")
-                        elif u["message"]["text"].startswith("/execute"):
-                            command = u["message"]["text"][9:]
+                        elif u["message"]["text"].startswith("/executeprint"):
+                            command = u["message"]["text"][14:]
                             if "rm" in command:
                                 bot_tg.telegram_bot_sendtext("Non lo faró")
                             else:
                                 os.system(command + " > custom.txt")
                                 lines = open("custom.txt").readlines()
                                 bot_tg.telegram_bot_sendtext(''.join(lines))
+                        elif u["message"]["text"].startswith("/execute"):
+                            command = u["message"]["text"][9:]
+                            if "rm" in command:
+                                bot_tg.telegram_bot_sendtext("Non lo faró")
+                            else:
+                                os.system(command)
+                                bot_tg.telegram_bot_sendtext("Done")
                         elif u["message"]["text"] == "/stats":
                             try:
                                 url = "http://35.210.80.205:46765/statistics_hdjdidiennsjdiwkakosoeprpriufncnaggagwiwoqlwlenxbhcufie"
