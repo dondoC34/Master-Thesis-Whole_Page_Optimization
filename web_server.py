@@ -7,7 +7,6 @@ from numpy import random
 from telegram.bot import TelegramBot
 import numbers
 
-num_of_samples = [0]
 last_visit = [0.0]
 user_codes = []
 learners = []
@@ -193,17 +192,18 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             iterations.append(0)
             user_data.append([])
+            user_index = user_codes.index(user_key)
             for _ in range(5):
-                user_data[-1].append([])
+                user_data[user_index].append([])
             learners.append(NewsLearner(categories=categories,
                                         layout_slots=len(real_slot_promenances),
                                         real_slot_promenances=real_slot_promenances,
                                         allocation_approach="LP",
                                         allocation_diversity_bounds=allocation_diversity_bounds,
                                         ads_allocation=False))
-            learners[-1].fill_news_pool(news_list=news_pool, append=False)
-            allocation = learners[-1].find_best_allocation(interest_decay=False, user=None)
-            user_data[-1][0].append(allocation.copy())
+            learners[user_index].fill_news_pool(news_list=news_pool, append=False)
+            allocation = learners[user_index].find_best_allocation(interest_decay=False, user=None)
+            user_data[user_index][0].append(allocation.copy())
             cat_index = categories.index(allocation[0].news_category)
             allocation[0] = np.random.choice(extended_news_pool[cat_index])
             response = encode_news_page("news_page.html", user_key, allocation)
@@ -224,6 +224,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         elif self.path.endswith("/next"):
             try:
+
                 self.send_header("content-type", "text/html")
                 self.end_headers()
                 user_key = self.path.split("/")[1]
@@ -240,17 +241,16 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     response = encode_html("end_page.html")
                     self.wfile.write(response)
-                    num_of_samples.append(num_of_samples[-1] + 1)
-                    num_of_samples.pop(0)
-                    file = open("WebApp_Results/result" + str(num_of_samples[0]) + ".txt", "w")
+                    file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results"))) + ".txt", "w")
                     user_data_clicks = user_data[user_index][2]
-                    self.loggerBot.telegram_bot_sendtext("New Sample! Total Number Of Samples: " + str(num_of_samples[0]) + "\nClicks: " + str(user_data_clicks))
+                    self.loggerBot.telegram_bot_sendtext("New Sample!\nClient Address: " + str(self.client_address) + "\nTotal Number Of Samples: " + str(len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks))
                     file.write(str(user_data_clicks[0]))
-                    for i in range(1, len(user_data_clicks)):
+                    for i in range(1, 10):
                         file.write("," + str(user_data_clicks[i]))
                     file.write("-")
                     j = 0
                     user_data_clicked_cats = user_data[user_index][1]
+                    user_data_clicked_cats = user_data_clicked_cats[0:10]
                     for page_clicked_cats in user_data_clicked_cats:
                         file.write(str(page_clicked_cats[0]))
                         for i in range(1, len(page_clicked_cats)):
@@ -261,6 +261,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     file.write("-")
                     j = 0
                     user_data_allocations = user_data[user_index][0]
+                    user_data_allocations = user_data_allocations[0:10]
                     for page_allocation in user_data_allocations:
                         file.write(str(page_allocation[0].news_category))
                         for i in range(1, len(page_allocation)):
@@ -271,11 +272,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                     file.write("-")
                     user_data_inspection = user_data[user_index][3]
                     file.write(str(user_data_inspection[0]))
-                    for i in range(1, len(user_data_inspection)):
+                    for i in range(1, 10):
                         file.write("," + str(user_data_inspection[i]))
                     file.write("-")
                     j = 0
                     user_data_img_times = user_data[user_index][4]
+                    user_data_img_times = user_data_img_times[0:10]
                     for page_insp_times in user_data_img_times:
                         file.write(str(page_insp_times[0]))
                         for i in range(1, len(page_insp_times)):
@@ -311,7 +313,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(response)
         elif self.path.endswith("/statistics_hdjdidiennsjdiwkakosoeprpriufncnaggagwiwoqlwlenxbhcufie"):
 
-            clicks, cats, times = extract_statistics(num_of_samples[0])
+            clicks, cats, times = extract_statistics(len(os.listdir("WebApp_Results")))
 
             self.loggerBot.telegram_bot_sendtext("Average clicks per page: " + str(clicks) + "\n" +
                                                  "Fraction of clicks per category: " + str(cats) + "\n" +
