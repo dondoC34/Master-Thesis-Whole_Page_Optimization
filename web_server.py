@@ -459,8 +459,6 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 if __name__ == "__main__":
     PORT = 46765
-    a, b, c = extract_statistics()
-    print(a)
     server = ThreadedHTTPServer(("", PORT), RequestHandler)
     print("multi-thread server running on port " + str(PORT))
     server.serve_forever()
