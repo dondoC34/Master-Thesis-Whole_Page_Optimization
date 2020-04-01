@@ -122,13 +122,13 @@ def encode_news_page(html_file, user_id, news_list, page_nr):
     return result.encode()
 
 
-def extract_statistics(num_of_samples):
+def extract_statistics():
     image_inspection_times = []
     clicked_categories = [0] * len(categories)
     clicks_per_page = []
 
-    for id in range(1, num_of_samples + 1):
-        file = open("WebApp_Results/result" + str(id) + ".txt", "r").read()
+    for filename in os.listdir("WebApp_Results"):
+        file = open("WebApp_Results/" + filename, "r").read()
         file = file.split("-")
 
         clicks = file[0].split(",")
@@ -380,9 +380,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             response = encode_html("session_expired_page.html")
             self.wfile.write(response)
         elif self.path.endswith("/statistics_hdjdidiennsjdiwkakosoeprpriufncnaggagwiwoqlwlenxbhcufie"):
-
-            clicks, cats, times = extract_statistics(len(os.listdir("WebApp_Results")))
-
+            clicks, cats, times = extract_statistics()
             self.loggerBot.telegram_bot_sendtext("Average clicks per page: " + str(clicks) + "\n" +
                                                  "Fraction of clicks per category: " + str(cats) + "\n" +
                                                  "Prominence estimation: " + str(times) + "\n" +
@@ -461,6 +459,8 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 if __name__ == "__main__":
     PORT = 46765
+    a, b, c = extract_statistics()
+    print(a)
     server = ThreadedHTTPServer(("", PORT), RequestHandler)
     print("multi-thread server running on port " + str(PORT))
     server.serve_forever()
