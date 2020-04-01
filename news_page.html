@@ -12,7 +12,7 @@
 
     <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
   <a class="navbar-brand mb-0 h1">
-    AI Article Recommendation</a>
+    AI Article Recommendation -  / 10</a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
@@ -77,34 +77,18 @@
       <img id="12" style="border-color: black; cursor: pointer;" onmouseover=over(12) onmouseout=out(12) onclick=img_click(12) src="" alt="" height="200px" class="img-thumbnail">
     </div>
   </div>
-  <div class="row">
-    <div class="col-3 text-center">
-      <img id="13" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(13) onmouseout=out(13) onclick=img_click(13) src="" alt="" height="200px" class="img-thumbnail">
-    </div>
-    <div class="col-3 text-center">
-      <img id="14" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(14) onmouseout=out(14) onclick=img_click(14) src="" alt="" height="200px" class="img-thumbnail">
-    </div>
-    <div class="col-3 text-center">
-      <img id="15" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(15) onmouseout=out(15) onclick=img_click(15) src="" alt="" height="200px" class="img-thumbnail">
-    </div>
-    <div class="col-3 text-center">
-      <img id="16" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(16) onmouseout=out(16) onclick=img_click(16) src="" alt="" height="200px" class="img-thumbnail">
-    </div>
-  </div>
-
-
 </div>
 
 
 
 <script>
-  var clicked = false;
   var user_id = ;
-  var clicked = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+  var clicked = [false, false, false, false, false, false, false, false, false, false, false, false, false];
   var img_names = ;
   var init_page_time = new Date().getTime();
-  var init_image_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  var image_inspection_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  var init_image_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  var image_inspection_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  var next_clicked = false;
 
 
   function img_click(slot_nr){
@@ -141,26 +125,29 @@
   var server_location = page_location.slice(0, index + 1);
 
   function next(){
-    var current_time = new Date().getTime();
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-      if (this.responseText == "expired"){
-        window.location = server_location + "expired"
+    if (next_clicked == false){
+      next_clicked = true;
+      var current_time = new Date().getTime();
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        if (this.responseText == "expired"){
+          window.location = server_location + "expired"
+        }
+        else {
+          window.location = server_location + this.responseText + "/next";
+        }
       }
-      else {
-        window.location = server_location + this.responseText + "/next";
-      }
+      };
+      xhr.open("POST", server_location, false);
+      var to_send = {id: user_id, clicked: clicked, inspection_time: current_time - init_page_time, image_inspection_times: image_inspection_time};
+      to_send = JSON.stringify(to_send);
+      xhr.send(to_send);
     }
-    };
-    xhr.open("POST", server_location, false);
-    var to_send = {id: user_id, clicked: clicked, inspection_time: current_time - init_page_time, image_inspection_times: image_inspection_time};
-    to_send = JSON.stringify(to_send);
-    xhr.send(to_send);
   }
 
 
-  for(i = 0;i < 17; i++){
+  for(i = 0;i < 13; i++){
     var image = document.getElementById(String(i));
     image.src = server_location + "News-AdsApp-Copia/" + img_names[i] + ".GIF/image";
   }

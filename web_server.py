@@ -21,9 +21,9 @@ news_pool_cat_sorted = [[], [], [], [], [], []]
 big_news_pool_cat_sorted = [[], [], [], [], [], []]
 iterations = []
 user_data = []
-real_slot_promenances = [0.9, 0.8, 0.8, 0.7, 0.7, 0.7, 0.6, 0.6, 0.6, 0.4, 0.5, 0.5, 0.4, 0.2, 0.3, 0.3, 0.1]
+real_slot_promenances = [0.9, 0.8, 0.8, 0.7, 0.7, 0.7, 0.6, 0.6, 0.6, 0.4, 0.5, 0.5, 0.3]
 categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
-diversity_percentage = 7.5
+diversity_percentage = 9
 diversity_percentage_for_category = diversity_percentage / 100 * sum(real_slot_promenances)
 allocation_diversity_bounds = (diversity_percentage_for_category, diversity_percentage_for_category) * 3
 news_pool = []
@@ -106,7 +106,7 @@ def encode_html(html_file):
     return result.encode()
 
 
-def encode_news_page(html_file, user_id, news_list):
+def encode_news_page(html_file, user_id, news_list, page_nr):
     lines = open(html_file, "r").readlines()
     result = ""
     news_names = []
@@ -116,13 +116,14 @@ def encode_news_page(html_file, user_id, news_list):
     for line in lines:
         result += line
 
-    result = result[0:5489 + 10] + "'" + str(user_id) + "'" + result[5489 + 10::]
-    result = result[0:5662 + 12] + str(news_names) + result[5662 + 12::]
+    result = result[0:656 + 2] + str(page_nr) + result[656 + 2::]
+    result = result[0:4488 + 10] + "'" + str(user_id) + "'" + result[4488 + 10::]
+    print(result.find("img_names = ;"))
+    result = result[0:4633 + 12] + str(news_names) + result[4633 + 12::]
     return result.encode()
 
 
 def extract_statistics(num_of_samples):
-    result = []
     image_inspection_times = []
     clicked_categories = [0] * len(categories)
     clicks_per_page = []
@@ -248,7 +249,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 allocation[k] = np.random.choice(target_user_data[-1][cat_index])
                 target_user_data[-1][cat_index].remove(allocation[k])
             target_user_data[0].append(allocation.copy())
-            response = encode_news_page("news_page.html", user_key, allocation)
+            response = encode_news_page("news_page.html", user_key, allocation, 1)
             self.wfile.write(response)
             timestamps_lock.acquire()
             current_time = time.time()
@@ -273,8 +274,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             try:
                 self.send_header("content-type", "text/html")
                 self.end_headers()
-                user_key = self.path.split("/")[1]
                 user_data_lock.acquire()
+                user_key = self.path.split("/")[1]
                 user_index = user_codes.index(user_key)
                 target_user_data = user_data[user_index]
                 target_user_learner = learners[user_index]
@@ -282,7 +283,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 target_user_iterations = iterations[user_index]
                 timestamps[user_index] = time.time()
                 user_data_lock.release()
-                
+
                 if target_user_iterations < 10:
                     allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None)
                     cat_index = categories.index(allocation[0].news_category)
@@ -297,7 +298,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                         allocation[k] = np.random.choice(target_user_data[-1][cat_index])
                         target_user_data[-1][cat_index].remove(allocation[k])
                     target_user_data[0].append(allocation.copy())
-                    response = encode_news_page("news_page.html", user_key, allocation)
+                    response = encode_news_page("news_page.html", user_key, allocation, target_user_iterations + 1)
                     self.wfile.write(response)
                 else:
                     response = encode_html("end_page.html")
@@ -361,9 +362,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                     user_data_lock.release()
 
             except ValueError:
+                user_data_lock.release()
                 response = encode_html("session_expired_page.html")
                 self.wfile.write(response)
             except IndexError:
+                user_data_lock.release()
                 response = encode_html("zanero_page.html")
                 self.wfile.write(response)
 
@@ -399,9 +402,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         data = simplejson.loads(data_string)
 
         try:
+            user_data_lock.acquire()
             user_id = data["id"]
             user_clicks = data["clicked"]
-            user_data_lock.acquire()
             user_index = user_codes.index(user_id)
             user_alloc = user_data[user_index][0][-1]
             target_user_data = user_data[user_index]
@@ -438,12 +441,14 @@ class RequestHandler(BaseHTTPRequestHandler):
             target_user_data[4].append(data["image_inspection_times"])
 
         except ValueError:
+            user_data_lock.release()
             self.send_response(200)
             self.send_header("content-type", "text/html")
             self.end_headers()
             self.wfile.write("expired".encode())
 
         except KeyError:
+            user_data_lock.release()
             self.send_response(200)
             self.send_header("content-type", "text/html")
             self.end_headers()
