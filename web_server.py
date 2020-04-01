@@ -6,8 +6,14 @@ from news_learner import *
 from numpy import random
 from telegram.bot import TelegramBot
 import numbers
+from socketserver import ThreadingMixIn
+import threading
 
 last_visit = [0.0]
+last_visit_lock = threading.Lock()
+user_data_lock = threading.Lock()
+timestamps_lock = threading.Lock()
+file_saving_lock = threading.Lock()
 user_codes = []
 learners = []
 timestamps = []
@@ -169,7 +175,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.send_response(200)
-        if self.path.endswith("/"):
+        if self.path == "/":
             self.send_header("content-type", "text/html")
             self.end_headers()
             response = encode_html("intro.html")
@@ -197,20 +203,21 @@ class RequestHandler(BaseHTTPRequestHandler):
             f.close()
 
         elif self.path.endswith("/get_started"):
+            last_visit_lock.acquire()
             last_visit.__delitem__(0)
             last_visit.append(time.time())
+            last_visit_lock.release()
             self.send_header("content-type", "text/html")
             self.end_headers()
             user_key = key_gen(16)
             while user_key in user_codes:
                 user_key = key_gen(16)
 
+            user_data_lock.acquire()
             user_codes.append(user_key)
-            if len(user_codes) > 200:
-                self.loggerBot.telegram_bot_sendtext("Many Active Users: " + str(len(user_codes)))
-
             iterations.append(0)
             user_data.append([])
+            timestamps.append(time.time())
             user_index = user_codes.index(user_key)
             for _ in range(7):
                 user_data[user_index].append([])
@@ -225,23 +232,26 @@ class RequestHandler(BaseHTTPRequestHandler):
                                         allocation_diversity_bounds=allocation_diversity_bounds,
                                         ads_allocation=False))
             learners[user_index].fill_news_pool(news_list=news_pool, append=False)
-            allocation = learners[user_index].find_best_allocation(interest_decay=False, user=None)
+            target_user_data = user_data[user_index]
+            target_user_learner = learners[user_index]
+            user_data_lock.release()
+            allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None)
             cat_index = categories.index(allocation[0].news_category)
-            if len(user_data[user_index][-2][cat_index]) == 0:
-                user_data[user_index][-2][cat_index] = extended_news_pool[cat_index].copy()
-            allocation[0] = np.random.choice(user_data[user_index][-2][cat_index])
-            user_data[user_index][-2][cat_index].remove(allocation[0])
+            if len(target_user_data[-2][cat_index]) == 0:
+                target_user_data[-2][cat_index] = extended_news_pool[cat_index].copy()
+            allocation[0] = np.random.choice(target_user_data[-2][cat_index])
+            target_user_data[-2][cat_index].remove(allocation[0])
             for k in range(1, len(allocation)):
                 cat_index = categories.index(allocation[k].news_category)
-                if len(user_data[user_index][-1][cat_index]) == 0:
-                    user_data[user_index][-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
-                allocation[k] = np.random.choice(user_data[user_index][-1][cat_index])
-                user_data[user_index][-1][cat_index].remove(allocation[k])
-            user_data[user_index][0].append(allocation.copy())
+                if len(target_user_data[-1][cat_index]) == 0:
+                    target_user_data[-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
+                allocation[k] = np.random.choice(target_user_data[-1][cat_index])
+                target_user_data[-1][cat_index].remove(allocation[k])
+            target_user_data[0].append(allocation.copy())
             response = encode_news_page("news_page.html", user_key, allocation)
             self.wfile.write(response)
+            timestamps_lock.acquire()
             current_time = time.time()
-            timestamps.append(current_time)
             deletion_indexes = []
             for i in range(len(timestamps)):
                 if current_time - timestamps[i] > 1800:
@@ -254,46 +264,54 @@ class RequestHandler(BaseHTTPRequestHandler):
                 iterations.__delitem__(elem)
                 user_data.__delitem__(elem)
 
+            timestamps_lock.release()
+
             if np.random.binomial(1, 0.1) == 1:
                 self.loggerBot.telegram_bot_sendtext("Number Of Active Users: " + str(len(user_codes)))
 
         elif self.path.endswith("/next"):
             try:
-
                 self.send_header("content-type", "text/html")
                 self.end_headers()
                 user_key = self.path.split("/")[1]
+                user_data_lock.acquire()
                 user_index = user_codes.index(user_key)
+                target_user_data = user_data[user_index]
+                target_user_learner = learners[user_index]
                 iterations[user_index] += 1
-                if iterations[user_index] < 10:
-                    allocation = learners[user_index].find_best_allocation(interest_decay=False, user=None)
+                target_user_iterations = iterations[user_index]
+                timestamps[user_index] = time.time()
+                user_data_lock.release()
+                
+                if target_user_iterations < 10:
+                    allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None)
                     cat_index = categories.index(allocation[0].news_category)
-                    if len(user_data[user_index][-2][cat_index]) == 0:
-                        user_data[user_index][-2][cat_index] = extended_news_pool[cat_index].copy()
-                    allocation[0] = np.random.choice(user_data[user_index][-2][cat_index])
-                    user_data[user_index][-2][cat_index].remove(allocation[0])
+                    if len(target_user_data[-2][cat_index]) == 0:
+                        target_user_data[-2][cat_index] = extended_news_pool[cat_index].copy()
+                    allocation[0] = np.random.choice(target_user_data[-2][cat_index])
+                    target_user_data[-2][cat_index].remove(allocation[0])
                     for k in range(1, len(allocation)):
                         cat_index = categories.index(allocation[k].news_category)
-                        if len(user_data[user_index][-1][cat_index]) == 0:
-                            user_data[user_index][-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
-                        allocation[k] = np.random.choice(user_data[user_index][-1][cat_index])
-                        user_data[user_index][-1][cat_index].remove(allocation[k])
-                    user_data[user_index][0].append(allocation.copy())
+                        if len(target_user_data[-1][cat_index]) == 0:
+                            target_user_data[-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
+                        allocation[k] = np.random.choice(target_user_data[-1][cat_index])
+                        target_user_data[-1][cat_index].remove(allocation[k])
+                    target_user_data[0].append(allocation.copy())
                     response = encode_news_page("news_page.html", user_key, allocation)
                     self.wfile.write(response)
-                    timestamps[user_index] = time.time()
                 else:
                     response = encode_html("end_page.html")
                     self.wfile.write(response)
+                    file_saving_lock.acquire()
                     file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results")) + 1) + ".txt", "w")
-                    user_data_clicks = user_data[user_index][2]
-                    self.loggerBot.telegram_bot_sendtext("New Sample!\nClient Address: " + str(self.client_address) + "\nTotal Number Of Samples: " + str(len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks))
+                    user_data_clicks = target_user_data[2]
+                    self.loggerBot.telegram_bot_sendtext("New Sample!\nClient Address: " + str(self.client_address[0]) + "\nTotal Number Of Samples: " + str(len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks[0:10]))
                     file.write(str(user_data_clicks[0]))
                     for i in range(1, 10):
                         file.write("," + str(user_data_clicks[i]))
                     file.write("-")
                     j = 0
-                    user_data_clicked_cats = user_data[user_index][1]
+                    user_data_clicked_cats = target_user_data[1]
                     user_data_clicked_cats = user_data_clicked_cats[0:10]
                     for page_clicked_cats in user_data_clicked_cats:
                         file.write(str(page_clicked_cats[0]))
@@ -304,7 +322,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                             file.write(";")
                     file.write("-")
                     j = 0
-                    user_data_allocations = user_data[user_index][0]
+                    user_data_allocations = target_user_data[0]
                     user_data_allocations = user_data_allocations[0:10]
                     for page_allocation in user_data_allocations:
                         file.write(str(page_allocation[0].news_category))
@@ -314,13 +332,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                         if j < len(user_data_allocations):
                             file.write(";")
                     file.write("-")
-                    user_data_inspection = user_data[user_index][3]
+                    user_data_inspection = target_user_data[3]
                     file.write(str(user_data_inspection[0]))
                     for i in range(1, 10):
                         file.write("," + str(user_data_inspection[i]))
                     file.write("-")
                     j = 0
-                    user_data_img_times = user_data[user_index][4]
+                    user_data_img_times = target_user_data[4]
                     user_data_img_times = user_data_img_times[0:10]
                     for page_insp_times in user_data_img_times:
                         file.write(str(page_insp_times[0]))
@@ -331,12 +349,16 @@ class RequestHandler(BaseHTTPRequestHandler):
                             file.write(";")
 
                     file.close()
+                    file_saving_lock.release()
 
+                    user_data_lock.acquire()
+                    user_index = user_codes.index(user_key)
                     learners.__delitem__(user_index)
                     timestamps.__delitem__(user_index)
                     user_codes.__delitem__(user_index)
                     iterations.__delitem__(user_index)
                     user_data.__delitem__(user_index)
+                    user_data_lock.release()
 
             except ValueError:
                 response = encode_html("session_expired_page.html")
@@ -366,7 +388,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             if (not self.path.endswith("/favicon.ico")) and (not self.path.endswith("precomposed.png")) and \
                (not self.path.endswith("120x120.png")) and (not self.path.endswith("icon.png")):
-                self.loggerBot.telegram_bot_sendtext("Bad Request: " + self.path)
+                self.loggerBot.telegram_bot_sendtext("Bad Request From " + str(self.client_address[0]) + ": " + self.path)
                 self.send_header("content-type", "text/html")
                 self.end_headers()
                 response = encode_html("zanero_page.html")
@@ -379,8 +401,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             user_id = data["id"]
             user_clicks = data["clicked"]
+            user_data_lock.acquire()
             user_index = user_codes.index(user_id)
             user_alloc = user_data[user_index][0][-1]
+            target_user_data = user_data[user_index]
+            user_data_lock.release()
 
             num_of_clicks = 0
             clicked_elements = []
@@ -401,16 +426,16 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(str(user_id).encode())
 
-            user_data[user_index][1].append(clicked_elements.copy())
-            user_data[user_index][2].append(num_of_clicks)
+            target_user_data[1].append(clicked_elements.copy())
+            target_user_data[2].append(num_of_clicks)
             if isinstance(data["inspection_time"], numbers.Number):
-                user_data[user_index][3].append(data["inspection_time"])
+                target_user_data[3].append(data["inspection_time"])
             else:
                 raise KeyError()
             for elem in data["image_inspection_times"]:
                 if not isinstance(elem, numbers.Number):
                     raise KeyError()
-            user_data[user_index][4].append(data["image_inspection_times"])
+            target_user_data[4].append(data["image_inspection_times"])
 
         except ValueError:
             self.send_response(200)
@@ -426,8 +451,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.loggerBot.telegram_bot_sendtext("Bad Post Request: " + str(data))
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    pass
+
+
 if __name__ == "__main__":
     PORT = 46765
-    server = HTTPServer(("", PORT), RequestHandler)
-    print("server running on port " + str(PORT))
+    server = ThreadedHTTPServer(("", PORT), RequestHandler)
+    print("multi-thread server running on port " + str(PORT))
     server.serve_forever()
