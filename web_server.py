@@ -285,7 +285,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     response = encode_html("end_page.html")
                     self.wfile.write(response)
-                    file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results"))) + ".txt", "w")
+                    file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results")) + 1) + ".txt", "w")
                     user_data_clicks = user_data[user_index][2]
                     self.loggerBot.telegram_bot_sendtext("New Sample!\nClient Address: " + str(self.client_address) + "\nTotal Number Of Samples: " + str(len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks))
                     file.write(str(user_data_clicks[0]))
