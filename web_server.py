@@ -11,6 +11,8 @@ last_visit = [0.0]
 user_codes = []
 learners = []
 timestamps = []
+news_pool_cat_sorted = [[], [], [], [], [], []]
+big_news_pool_cat_sorted = [[], [], [], [], [], []]
 iterations = []
 user_data = []
 real_slot_promenances = [0.9, 0.8, 0.8, 0.7, 0.7, 0.7, 0.6, 0.6, 0.6, 0.4, 0.5, 0.5, 0.4, 0.2, 0.3, 0.3, 0.1]
@@ -19,13 +21,14 @@ diversity_percentage = 7.5
 diversity_percentage_for_category = diversity_percentage / 100 * sum(real_slot_promenances)
 allocation_diversity_bounds = (diversity_percentage_for_category, diversity_percentage_for_category) * 3
 news_pool = []
+not_used_news = []
 extended_news_pool = []
 for _ in range(len(categories)):
     extended_news_pool.append([])
 
 k = 0
 for category in categories:
-    for id in range(1, 61):
+    for id in range(1, 91):
         news_pool.append(News(news_id=k,
                               news_name=category + "-" + str(id)))
         k += 1
@@ -42,13 +45,26 @@ for category in categories:
                                         "tech-43", "tech-44", "tech-45",
                                         "scienza-61", "scienza-62", "sport-61", "sport-62", "sport-63", "sport-64",
                                         "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64",
-                                        "cibo-65", "gossip-62"]:
+                                        "cibo-65", "gossip-62",
+                                        "cibo-71", "cibo-72", "cibo-73", "cibo-74", "cibo-75",
+                                        "gossip-71", "gossip-72", "gossip-73", "gossip-74", "gossip-75",
+                                        "politic-71", "politic-72", "politic-73", "politic-74", "politic-75",
+                                        "tech-71", "tech-72", "tech-73", "tech-74", "tech-75",
+                                        "sport-71", "sport-72", "sport-73", "sport-74", "sport-75",
+                                        "scienza-71", "scienza-72", "scienza-73", "scienza-74", "scienza-75"]:
 
             news_pool.__delitem__(-1)
 
+for elem in news_pool:
+    cat_index = categories.index(elem.news_category)
+    news_pool_cat_sorted[cat_index].append(elem)
+
+
+
+
 k = 0
 for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
-    for id in range(1, 61):
+    for id in range(1, 91):
 
         if category + "-" + str(id) in ["cibo-1", "cibo-6", "cibo-13", "cibo-17",
                                         "gossip-14",
@@ -62,7 +78,13 @@ for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
                                         "tech-43", "tech-44", "tech-45",
                                         "scienza-61", "scienza-62", "sport-61", "sport-62", "sport-63", "sport-64",
                                         "sport-65", "tech-61", "politic-61", "cibo-61", "cibo-62", "cibo-63", "cibo-64",
-                                        "cibo-65", "gossip-62"]:
+                                        "cibo-65", "gossip-62",
+                                        "cibo-71", "cibo-72", "cibo-73", "cibo-74", "cibo-75",
+                                        "gossip-71", "gossip-72", "gossip-73", "gossip-74", "gossip-75",
+                                        "politic-71", "politic-72", "politic-73", "politic-74", "politic-75",
+                                        "tech-71", "tech-72", "tech-73", "tech-74", "tech-75",
+                                        "sport-71", "sport-72", "sport-73", "sport-74", "sport-75",
+                                        "scienza-71", "scienza-72", "scienza-73", "scienza-74", "scienza-75"]:
 
             news = News(news_id=id, news_name=category + "-" + str(id))
             news_index = categories.index(news.news_category)
@@ -187,14 +209,15 @@ class RequestHandler(BaseHTTPRequestHandler):
             if len(user_codes) > 200:
                 self.loggerBot.telegram_bot_sendtext("Many Active Users: " + str(len(user_codes)))
 
-            if np.random.binomial(1, 0.1) == 1:
-                self.loggerBot.telegram_bot_sendtext("Number Of Active Users: " + str(len(user_codes)))
-
             iterations.append(0)
             user_data.append([])
             user_index = user_codes.index(user_key)
-            for _ in range(5):
+            for _ in range(7):
                 user_data[user_index].append([])
+            for i in range(len(categories)):
+                user_data[user_index][-1].append(news_pool_cat_sorted[i].copy())
+                user_data[user_index][-2].append(extended_news_pool[i].copy())
+
             learners.append(NewsLearner(categories=categories,
                                         layout_slots=len(real_slot_promenances),
                                         real_slot_promenances=real_slot_promenances,
@@ -203,9 +226,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                                         ads_allocation=False))
             learners[user_index].fill_news_pool(news_list=news_pool, append=False)
             allocation = learners[user_index].find_best_allocation(interest_decay=False, user=None)
-            user_data[user_index][0].append(allocation.copy())
             cat_index = categories.index(allocation[0].news_category)
-            allocation[0] = np.random.choice(extended_news_pool[cat_index])
+            if len(user_data[user_index][-2][cat_index]) == 0:
+                user_data[user_index][-2][cat_index] = extended_news_pool[cat_index].copy()
+            allocation[0] = np.random.choice(user_data[user_index][-2][cat_index])
+            user_data[user_index][-2][cat_index].remove(allocation[0])
+            for k in range(1, len(allocation)):
+                cat_index = categories.index(allocation[k].news_category)
+                if len(user_data[user_index][-1][cat_index]) == 0:
+                    user_data[user_index][-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
+                allocation[k] = np.random.choice(user_data[user_index][-1][cat_index])
+                user_data[user_index][-1][cat_index].remove(allocation[k])
+            user_data[user_index][0].append(allocation.copy())
             response = encode_news_page("news_page.html", user_key, allocation)
             self.wfile.write(response)
             current_time = time.time()
@@ -222,6 +254,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 iterations.__delitem__(elem)
                 user_data.__delitem__(elem)
 
+            if np.random.binomial(1, 0.1) == 1:
+                self.loggerBot.telegram_bot_sendtext("Number Of Active Users: " + str(len(user_codes)))
+
         elif self.path.endswith("/next"):
             try:
 
@@ -232,9 +267,18 @@ class RequestHandler(BaseHTTPRequestHandler):
                 iterations[user_index] += 1
                 if iterations[user_index] < 10:
                     allocation = learners[user_index].find_best_allocation(interest_decay=False, user=None)
-                    user_data[user_index][0].append(allocation.copy())
                     cat_index = categories.index(allocation[0].news_category)
-                    allocation[0] = np.random.choice(extended_news_pool[cat_index])
+                    if len(user_data[user_index][-2][cat_index]) == 0:
+                        user_data[user_index][-2][cat_index] = extended_news_pool[cat_index].copy()
+                    allocation[0] = np.random.choice(user_data[user_index][-2][cat_index])
+                    user_data[user_index][-2][cat_index].remove(allocation[0])
+                    for k in range(1, len(allocation)):
+                        cat_index = categories.index(allocation[k].news_category)
+                        if len(user_data[user_index][-1][cat_index]) == 0:
+                            user_data[user_index][-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
+                        allocation[k] = np.random.choice(user_data[user_index][-1][cat_index])
+                        user_data[user_index][-1][cat_index].remove(allocation[k])
+                    user_data[user_index][0].append(allocation.copy())
                     response = encode_news_page("news_page.html", user_key, allocation)
                     self.wfile.write(response)
                     timestamps[user_index] = time.time()
