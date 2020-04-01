@@ -118,7 +118,6 @@ def encode_news_page(html_file, user_id, news_list, page_nr):
 
     result = result[0:656 + 2] + str(page_nr) + result[656 + 2::]
     result = result[0:4488 + 10] + "'" + str(user_id) + "'" + result[4488 + 10::]
-    print(result.find("img_names = ;"))
     result = result[0:4633 + 12] + str(news_names) + result[4633 + 12::]
     return result.encode()
 
