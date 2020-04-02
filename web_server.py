@@ -250,6 +250,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             target_user_data[0].append(allocation.copy())
             response = encode_news_page("news_page.html", user_key, allocation, 1)
             self.wfile.write(response)
+            user_data_lock.acquire()
             timestamps_lock.acquire()
             current_time = time.time()
             deletion_indexes = []
@@ -265,6 +266,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 user_data.__delitem__(elem)
 
             timestamps_lock.release()
+            user_data_lock.release()
 
             if np.random.binomial(1, 0.1) == 1:
                 self.loggerBot.telegram_bot_sendtext("Number Of Active Users: " + str(len(user_codes)))
@@ -415,6 +417,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             user_clicks = data["clicked"]
             user_index = user_codes.index(user_id)
             user_alloc = user_data[user_index][0][-1]
+            user_learner = learners[user_index]
             target_user_data = user_data[user_index]
             user_data_lock.release()
 
@@ -428,7 +431,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if user_clicks[i]:
                     num_of_clicks += 1
                     clicked_elements.append(user_alloc[i].news_category)
-                    learners[user_index].news_click(user_alloc[i], user=None, slot_nr=[i], interest_decay=False)
+                    user_learner.news_click(user_alloc[i], user=None, slot_nr=[i], interest_decay=False)
                 else:
                     clicked_elements.append(0)
 
