@@ -76,6 +76,13 @@ while True:
 
                             except:
                                 pass
+                        elif u["message"]["text"] == "/location":
+                            try:
+                                ip = u["message"]["text"][10:]
+                                url = "http://api.ipstack.com/" + str(ip) + "?access_key=bcd7df923fbd22141a8f036d3853f197"
+                                bot_tg.telegram_bot_sendtext(requests.get(url).text)
+                            except:
+                                pass
                         elif u["message"]["text"].startswith("/createresponse"):
                             try:
                                 split = u["message"]["text"].split(" ")
