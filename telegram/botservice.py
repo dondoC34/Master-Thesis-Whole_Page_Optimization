@@ -3,6 +3,7 @@ import time
 import os
 import numpy as np
 import requests
+import json
 
 
 bot_tg = bot.TelegramBot()
@@ -76,12 +77,13 @@ while True:
 
                             except:
                                 pass
-                        elif u["message"]["text"] == "/location":
+                        elif u["message"]["text"].startswith("/location"):
                             try:
                                 ip = u["message"]["text"][10:]
                                 url = "http://api.ipstack.com/" + str(ip) + "?access_key=bcd7df923fbd22141a8f036d3853f197"
-                                bot_tg.telegram_bot_sendtext(requests.get(url).text)
-                            except:
+                                resp = json.loads(requests.get(url).text)
+                                bot_tg.telegram_bot_sendtext(str(resp["city"]))
+                            except Exception as e:
                                 pass
                         elif u["message"]["text"].startswith("/createresponse"):
                             try:
