@@ -361,13 +361,24 @@ class RequestHandler(BaseHTTPRequestHandler):
                     user_data_lock.release()
 
             except ValueError:
-                user_data_lock.release()
+                if user_data_lock.locked():
+                    user_data_lock.release()
+                if file_saving_lock.locked():
+                    file_saving_lock.release()
                 response = encode_html("session_expired_page.html")
                 self.wfile.write(response)
             except IndexError:
-                user_data_lock.release()
+                if user_data_lock.locked():
+                    user_data_lock.release()
+                if file_saving_lock.locked():
+                    file_saving_lock.release()
                 response = encode_html("zanero_page.html")
                 self.wfile.write(response)
+            except Exception:
+                if user_data_lock.locked():
+                    user_data_lock.release()
+                if file_saving_lock.locked():
+                    file_saving_lock.release()
 
         elif self.path.endswith("/end"):
             self.send_header("content-type", "text/html")
