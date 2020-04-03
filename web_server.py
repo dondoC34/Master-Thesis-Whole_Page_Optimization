@@ -169,9 +169,24 @@ def key_gen(length):
     return key
 
 
+class LogWriter:
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    def write_log(self, messages):
+        file = open(self.filename, "a")
+        curr_time = time.strftime("%H,%M,%S")
+        curr_thread_name = threading.current_thread().name
+        for message in messages:
+            file.write(curr_time + ": " + str(curr_thread_name) + " - " + str(message) + "\n")
+        file.close()
+
+
 class RequestHandler(BaseHTTPRequestHandler):
 
     loggerBot = TelegramBot()
+    logwriter = LogWriter("ServerLog.txt")
 
     def do_GET(self):
         self.send_response(200)
@@ -217,7 +232,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             user_codes.append(user_key)
             iterations.append(0)
             user_data.append([])
+            timestamps_lock.acquire()
             timestamps.append(time.time())
+            timestamps_lock.release()
             user_index = user_codes.index(user_key)
             for _ in range(7):
                 user_data[user_index].append([])
@@ -234,6 +251,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             learners[user_index].fill_news_pool(news_list=news_pool, append=False)
             target_user_data = user_data[user_index]
             target_user_learner = learners[user_index]
+            self.logwriter.write_log(["user " + str(user_key) + " joined.", "active users: " + str(user_codes),
+                                      "current user index: " + str(user_index)])
             user_data_lock.release()
             allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None)
             cat_index = categories.index(allocation[0].news_category)
@@ -258,6 +277,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if current_time - timestamps[i] > 1800:
                     deletion_indexes.append(i)
             deletion_indexes.sort(reverse=True)
+            self.logwriter.write_log(["About to delete users: " + str(deletion_indexes), "Active Users: " + str(user_codes)])
             for elem in deletion_indexes:
                 learners.__delitem__(elem)
                 timestamps.__delitem__(elem)
@@ -265,6 +285,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 iterations.__delitem__(elem)
                 user_data.__delitem__(elem)
 
+            self.logwriter.write_log(["Active Users: " + str(user_codes)])
             timestamps_lock.release()
             user_data_lock.release()
 
@@ -283,6 +304,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 iterations[user_index] += 1
                 target_user_iterations = iterations[user_index]
                 timestamps[user_index] = time.time()
+                self.logwriter.write_log(["User " + str(user_key) + "of index: " + str(user_index) + " complete page number " + str(target_user_iterations),
+                                          "Active users: " + str(user_codes)])
                 user_data_lock.release()
 
                 if target_user_iterations < 10:
@@ -301,13 +324,16 @@ class RequestHandler(BaseHTTPRequestHandler):
                     target_user_data[0].append(allocation.copy())
                     response = encode_news_page("news_page.html", user_key, allocation, target_user_iterations + 1)
                     self.wfile.write(response)
+                    self.logwriter.write_log(["Response sent to " + str(user_key)])
                 else:
                     response = encode_html("end_page.html")
                     self.wfile.write(response)
+                    self.logwriter.write_log(["About to save data for user " + str(user_key)])
                     file_saving_lock.acquire()
                     file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results")) + 1) + ".txt", "w")
                     user_data_clicks = target_user_data[2]
                     self.loggerBot.telegram_bot_sendtext("New Sample!\nClient Address: " + str(self.client_address[0]) + "\nTotal Number Of Samples: " + str(len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks[0:10]))
+                    self.logwriter.write_log(["User: " + str(user_key) + " clicks: " + str(user_data_clicks[0:10])])
                     file.write(str(user_data_clicks[0]))
                     for i in range(1, 10):
                         file.write("," + str(user_data_clicks[i]))
@@ -352,15 +378,17 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                     file.close()
                     file_saving_lock.release()
-
+                    self.logwriter.write_log(["Saved data for user " + str(user_key)])
                     user_data_lock.acquire()
                     user_index = user_codes.index(user_key)
+                    self.logwriter.write_log(["About to remove data of user: " + str(user_key) + " of index: " + str(user_index)])
                     learners.__delitem__(user_index)
                     timestamps.__delitem__(user_index)
                     user_codes.__delitem__(user_index)
                     iterations.__delitem__(user_index)
                     user_data.__delitem__(user_index)
                     user_data_lock.release()
+                    self.logwriter.write_log(["Removed data. Active users: " + str(user_codes) + " with residual iterations: " + str(iterations)])
 
             except ValueError:
                 if user_data_lock.locked():
@@ -376,11 +404,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                     file_saving_lock.release()
                 response = encode_html("zanero_page.html")
                 self.wfile.write(response)
-            except Exception:
-                if user_data_lock.locked():
-                    user_data_lock.release()
-                if file_saving_lock.locked():
-                    file_saving_lock.release()
 
         elif self.path.endswith("/end"):
             self.send_header("content-type", "text/html")
@@ -419,6 +442,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             user_alloc = user_data[user_index][0][-1]
             user_learner = learners[user_index]
             target_user_data = user_data[user_index]
+            self.logwriter.write_log(["Received user data of " + str(user_id) + " with index " + str(user_index),
+                                      "Currently active users: " + str(user_codes)])
             user_data_lock.release()
 
             num_of_clicks = 0
@@ -435,11 +460,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     clicked_elements.append(0)
 
-            self.send_response(200)
-            self.send_header("content-type", "text/html")
-            self.end_headers()
-            self.wfile.write(str(user_id).encode())
-
             target_user_data[1].append(clicked_elements.copy())
             target_user_data[2].append(num_of_clicks)
             if isinstance(data["inspection_time"], numbers.Number):
@@ -450,6 +470,15 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if not isinstance(elem, numbers.Number):
                     raise KeyError()
             target_user_data[4].append(data["image_inspection_times"])
+
+            self.logwriter.write_log(["Saved data of user " + str(user_id)])
+
+            self.send_response(200)
+            self.send_header("content-type", "text/html")
+            self.end_headers()
+            self.wfile.write(str(user_id).encode())
+            self.logwriter.write_log(["Response sent to " + str(user_id),
+                                      "Active users: " + str(user_codes)])
 
         except ValueError:
             user_data_lock.release()
