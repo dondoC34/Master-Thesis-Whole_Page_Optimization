@@ -171,22 +171,24 @@ def key_gen(length):
 
 class LogWriter:
 
-    def __init__(self, filename):
+    def __init__(self, filename, print):
         self.filename = filename
+        self.print = print
 
     def write_log(self, messages):
-        file = open(self.filename, "a")
-        curr_time = time.strftime("%H,%M,%S")
-        curr_thread_name = threading.current_thread().name
-        for message in messages:
-            file.write(curr_time + ": " + str(curr_thread_name) + " - " + str(message) + "\n")
-        file.close()
+        if self.print:
+            file = open(self.filename, "a")
+            curr_time = time.strftime("%H,%M,%S")
+            curr_thread_name = threading.current_thread().name
+            for message in messages:
+                file.write(curr_time + ": " + str(curr_thread_name) + " - " + str(message) + "\n")
+            file.close()
 
 
 class RequestHandler(BaseHTTPRequestHandler):
 
     loggerBot = TelegramBot()
-    logwriter = LogWriter("ServerLog.txt")
+    logwriter = LogWriter("ServerLog.txt", True)
 
     def do_GET(self):
         self.send_response(200)
