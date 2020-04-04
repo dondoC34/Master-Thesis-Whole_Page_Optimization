@@ -428,7 +428,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.loggerBot.telegram_bot_sendtext("Bad Request From " + str(self.client_address[0]) + ": " + self.path)
                 self.send_header("content-type", "text/html")
                 self.end_headers()
-                response = encode_html("zanero_page.html")
+                response = encode_html("intro.html")
                 self.wfile.write(response)
 
     def do_POST(self):
