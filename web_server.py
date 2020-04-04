@@ -303,7 +303,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                 user_index = user_codes.index(user_key)
                 target_user_data = user_data[user_index]
                 target_user_learner = learners[user_index]
-                iterations[user_index] += 1
                 target_user_iterations = iterations[user_index]
                 timestamps[user_index] = time.time()
                 self.logwriter.write_log(["User " + str(user_key) + "of index: " + str(user_index) + " complete page number " + str(target_user_iterations),
@@ -443,6 +442,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             user_index = user_codes.index(user_id)
             user_alloc = user_data[user_index][0][-1]
             user_learner = learners[user_index]
+            iterations[user_index] += 1
             target_user_data = user_data[user_index]
             self.logwriter.write_log(["Received user data of " + str(user_id) + " with index " + str(user_index),
                                       "Currently active users: " + str(user_codes)])
