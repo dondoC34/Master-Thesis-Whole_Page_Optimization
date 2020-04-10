@@ -177,24 +177,24 @@ class WeightedBetaDistribution:
 
 if __name__ == "__main__":
 
-    file = open("Ads-wpdda-perf/PDDA", "r")
+    file = open("Ads-wpdda-perf/greedy_assignment_all_cat_present.txt", "r")
     res1 = file.read().split(",")
     res1 = list(map(float, res1))
     file.close()
-    file = open("Ads-wpdda-perf/WPDDA.txt", "r")
+    file = open("Ads-wpdda-perf/WPDDA_all_cat_present", "r")
     res2 = file.read().split(",")
     res2 = list(map(float, res2))
     file.close()
 
-    file = open("Ads-wpdda-perf/PDDA_all_cat_present", "r")
-    res3 = file.read().split(",")
-    res3 = list(map(float, res3))
-    file.close()
-
-    file = open("Ads-wpdda-perf/WPDDA_all_cat_present", "r")
-    res4 = file.read().split(",")
-    res4 = list(map(float, res4))
-    file.close()
+    # file = open("Ads-wpdda-perf/PDDA_all_cat_present", "r")
+    # res3 = file.read().split(",")
+    # res3 = list(map(float, res3))
+    # file.close()
+    #
+    # file = open("Ads-wpdda-perf/WPDDA_all_cat_present", "r")
+    # res4 = file.read().split(",")
+    # res4 = list(map(float, res4))
+    # file.close()
 
     final_res1 = []
     final_res2 = []
@@ -202,25 +202,22 @@ if __name__ == "__main__":
     final_res4 = []
 
     for i in range(len(res1)):
-        if (res1[i] != -1) and (res2[i] != -1):
+        if (res2[i] != -1):
             final_res1.append(res1[i])
             final_res2.append(res2[i])
-        if (res3[i] != -1) and (res4[i] != -1):
-            final_res3.append(res3[i])
-            final_res4.append(res4[i])
 
     # plt.plot(np.array(final_res2[45::]) / np.array(final_res1[45::]))
     tmp = np.array(final_res2) / np.array(final_res1)
     smother = LineSmoother(tmp, iterations=5, values=[[20, 20], [10, 10], [5, 5], [4, 4], [6, 6]])
     tmp = smother.smooth_line()
-    tmp2 = np.array(final_res4) / np.array(final_res3)
-    smother2 = LineSmoother(tmp2, iterations=5, values=[[20, 20], [10, 10], [5, 5], [4, 4], [6, 6]])
-    tmp2 = smother2.smooth_line()
+    # tmp2 = np.array(final_res4) / np.array(final_res3)
+    # smother2 = LineSmoother(tmp2, iterations=5, values=[[20, 20], [10, 10], [5, 5], [4, 4], [6, 6]])
+    # tmp2 = smother2.smooth_line()
 
     plt.plot(tmp, linestyle="dashed", color="r", linewidth=2)
-    plt.plot(tmp2, linestyle="dotted", color="b", linewidth=2)
-    plt.ylim(bottom=0.9)
-    plt.ylim(top=1.075)
+    # plt.plot(tmp2, linestyle="dotted", color="b", linewidth=2)
+    # plt.ylim(bottom=0.9)
+    # plt.ylim(top=1.075)
     plt.axhline(y=1, color="k", linestyle="--")
     plt.title("WPDDA vs PDDA")
     plt.legend(["Only 1 Ads-Category Available", "All Ads-Categories Available"])

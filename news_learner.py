@@ -805,7 +805,6 @@ class NewsLearner:
                     ex_index = 0
                 self.ads_per_category[cat_index][ex_index].remove(ad)
 
-
     def measure_allocation_diversity_bounds_errors(self, slots_assegnation_probabilities, LP_news_pool, iter=5000):
         """
         This method only checks and collect data about how good are the three possible de-randomization techniques in
@@ -1275,8 +1274,8 @@ class NewsLearner:
             try:
                 indexes = var_name.split("_")
             except UnboundLocalError:
-                LP.writeLP("cazz")
-                exit(8)
+                print("Not enough ads to display in the pool.")
+                exit(-1)
 
             try:
                 category_index = int(indexes[0])

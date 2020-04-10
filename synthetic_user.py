@@ -8,7 +8,7 @@ from pulp import *
 from scipy.interpolate import interp1d
 from Line_Smoother import *
 
-slot_number = 10
+slot_number = 3
 categories_number = 6
 categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
 age_classes = ["LOW", "MEDIUM", "HIGH"]

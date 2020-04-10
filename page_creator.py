@@ -29,7 +29,9 @@ class PageCreator:
                                                  categories=categories,
                                                  allocation_diversity_bounds=(0.4, 0.4, 0.4, 0.4, 0.4, 0.4),
                                                  news_column_pivot=[0.01, 2],
-                                                 ads_allocation=False,
+                                                 ads_allocation=True,
+                                                 ads_allocation_technique="res_LP",
+                                                 ads_allocation_approach="pdda",
                                                  ))
 
             self.learner_matrix.append(attribute_row.copy())
@@ -57,7 +59,7 @@ class PageCreator:
 
         for i in range(len(self.learner_matrix)):
             for j in range(len(self.learner_matrix[i])):
-                self.learner_matrix[i][j].read_ads_weighted_beta_matrix_from_file(desinence=str(i)+"-"+str(j)+"10kiter_1kusers",
+                self.learner_matrix[i][j].read_ads_weighted_beta_matrix_from_file(desinence="_" + str(i)+"-"+str(j),
                                                                                   folder=folder)
 
     def fill_all_ads_pool(self, pool, append=False):
@@ -81,13 +83,13 @@ class PageCreator:
         index_2 = self.attribute_2.index(user.age_slot)
         self.learner_matrix[index_1][index_2].user_arrival(user=user, interest_decay=True, debug=debug)
         self.average_reward.append(self.learner_matrix[index_1][index_2].multiple_arms_avg_reward[-1])
-        # self.total_ads_clicks += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][0]
-        # self.total_ads_allocations += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][1]
-        # self.total_ads_assignment.append(self.total_ads_allocations)
-        # try:
-        #     self.fraction_of_ads_clicks.append(self.total_ads_clicks / self.total_ads_allocations)
-        # except ZeroDivisionError:
-        #     self.fraction_of_ads_clicks.append(0)
+        self.total_ads_clicks += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][0]
+        self.total_ads_allocations += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][1]
+        self.total_ads_assignment.append(self.total_ads_allocations)
+        try:
+            self.fraction_of_ads_clicks.append(self.total_ads_clicks / self.total_ads_allocations)
+        except ZeroDivisionError:
+            self.fraction_of_ads_clicks.append(0)
 
 
 if __name__ == "__main__":
@@ -98,12 +100,12 @@ if __name__ == "__main__":
     user_age = [j for j in range(10, 91)]
 
     num_of_users = 1000
-    num_of_news_per_category = 800
-    num_of_ads_per_category = 1100
-    num_of_interaction = 600
+    num_of_news_per_category = 3
+    num_of_ads_per_category = 1000
+    num_of_interaction = 500
 
     # USE WHICHEVER SLOT PROMENANCE VALUE, FEASIBLE OF COURSE (>0 AND <1)
-    real_slot_promenances = [0.9, 0.8, 0.7, 0.8, 0.5, 0.4, 0.5, 0.4, 0.3, 0.1]
+    real_slot_promenances = [0.9, 0.8, 0.7]
 
     for i in range(num_of_users):
         # FILL THE USER POOL
@@ -131,17 +133,19 @@ if __name__ == "__main__":
     click_result = []
     ads_assign = []
     site_avg_reward = []
-    for w in tqdm(range(1000)):
+    for w in tqdm(range(5000)):
 
         site = PageCreator(attributes_1=["M", "F"],
                            attributes_2=["LOW", "MEDIUM", "HIGH"],
                            real_slot_promenances=real_slot_promenances,
-                           layout_slots=10,
-                           allocation_approach="alt_LP",
+                           layout_slots=3,
+                           allocation_approach="standard",
                            categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"])
 
         # FILL ALL THE NEWS POOLS
         site.fill_all_news_pool(news_pool)
+        site.fill_all_ads_pool(ads_pool.copy())
+        site.read_all_ads_weighted_beta("Saved-Ads-W-Beta/")
         for user in user_pool:
             user.last_news_clicked.clear()
             user.last_news_in_allocation.clear()
@@ -165,33 +169,34 @@ if __name__ == "__main__":
         ads_assign.append(site.total_ads_assignment)
         site_avg_reward.append(site.average_reward)
 
-    file = open("site-performances/site_avg_reward.txt", "w")
-    site_avg_reward = np.mean(site_avg_reward, axis=0)
-    file.write(str(site_avg_reward[0]))
-    for i in range(1, len(site_avg_reward)):
-        file.write("," + str(site_avg_reward[i]))
-    file.close()
-    # result = []
-    # for i in [2 * k for k in range(1, 1001)]:
-    #     tmp = []
-    #     for j in range(len(click_result)):
-    #         for m in range(len(click_result[j])):
-    #             if ads_assign[j][m] == i:
-    #                 if click_result[j][m] not in tmp:
-    #                     tmp.append(click_result[j][m])
-    #
-    #     if len(tmp) > 0:
-    #         result.append(np.mean(tmp))
-    #     else:
-    #         result.append(-1)
+    # file = open("site-performances/site_avg_reward.txt", "w")
+    # site_avg_reward = np.mean(site_avg_reward, axis=0)
+    # file.write(str(site_avg_reward[0]))
+    # for i in range(1, len(site_avg_reward)):
+    #     file.write("," + str(site_avg_reward[i]))
+    # file.close()
+
+    result = []
+    for i in [2 * k for k in range(1, 1001)]:
+        tmp = []
+        for j in range(len(click_result)):
+            for m in range(len(click_result[j])):
+                if ads_assign[j][m] == i:
+                    if click_result[j][m] not in tmp:
+                        tmp.append(click_result[j][m])
+
+        if len(tmp) > 0:
+            result.append(np.mean(tmp))
+        else:
+            result.append(-1)
 
     # click_result = np.mean(click_result, axis=0)
-    # print(ads_assign[0])
-    # file = open("Ads-wpdda-perf/PDDA", "w")
-    # file.write(str(result[0]))
-    # for i in range(1, len(result)):
-    #     file.write("," + str(result[i]))
-    # file.close()
+    print(ads_assign[0])
+    file = open("Ads-wpdda-perf/PDDA_all_cat_present", "w")
+    file.write(str(result[0]))
+    for i in range(1, len(result)):
+        file.write("," + str(result[i]))
+    file.close()
 
 
 
