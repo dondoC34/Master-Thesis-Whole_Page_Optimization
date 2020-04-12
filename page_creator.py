@@ -31,7 +31,7 @@ class PageCreator:
                                                  news_column_pivot=[0.01, 2],
                                                  ads_allocation=True,
                                                  ads_allocation_technique="res_LP",
-                                                 ads_allocation_approach="greedy",
+                                                 ads_allocation_approach="pdda",
                                                  ))
 
             self.learner_matrix.append(attribute_row.copy())
@@ -177,25 +177,25 @@ if __name__ == "__main__":
     # file.close()
 
     result = []
-    # for i in [2 * k for k in range(1, 1001)]:
-    #     tmp = []
-    #     for j in range(len(click_result)):
-    #         for m in range(len(click_result[j])):
-    #             if ads_assign[j][m] == i:
-    #                 if click_result[j][m] not in tmp:
-    #                     tmp.append(click_result[j][m])
-    #
-    #     if len(tmp) > 0:
-    #         result.append(np.mean(tmp))
-    #     else:
-    #         result.append(-1)
+    for i in [2 * k for k in range(1, 1001)]:
+        tmp = []
+        for j in range(len(click_result)):
+            for m in range(len(click_result[j])):
+                if ads_assign[j][m] == i:
+                    if click_result[j][m] not in tmp:
+                        tmp.append(click_result[j][m])
 
-    click_result = np.mean(click_result, axis=0)
+        if len(tmp) > 0:
+            result.append(np.mean(tmp))
+        else:
+            result.append(-1)
+
+    click_result = np.mean(result, axis=0)
     print(ads_assign[0])
-    file = open("Ads-wpdda-perf/greedy_ads_assignment.txt", "w")
-    file.write(str(click_result[0]))
-    for i in range(1, len(click_result)):
-        file.write("," + str(click_result[i]))
+    file = open("Ads-wpdda-perf/PDDA", "w")
+    file.write(str(result[0]))
+    for i in range(1, len(result)):
+        file.write("," + str(result[i]))
     file.close()
 
 
