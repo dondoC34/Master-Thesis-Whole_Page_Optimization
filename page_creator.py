@@ -31,7 +31,7 @@ class PageCreator:
                                                  news_column_pivot=[0.01, 2],
                                                  ads_allocation=True,
                                                  ads_allocation_technique="res_LP",
-                                                 ads_allocation_approach="pdda",
+                                                 ads_allocation_approach="greedy",
                                                  ))
 
             self.learner_matrix.append(attribute_row.copy())
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     num_of_users = 1000
     num_of_news_per_category = 3
-    num_of_ads_per_category = 1000
+    num_of_ads_per_category = 1005
     num_of_interaction = 500
 
     # USE WHICHEVER SLOT PROMENANCE VALUE, FEASIBLE OF COURSE (>0 AND <1)
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     k = 0
     # CREATE A BOUNCH OF ADS
-    for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
+    for category in ["sport"]:
         for id in range(num_of_ads_per_category):
             ads_pool.append(Ad(k, category + "-" + str(id), np.random.choice([False])))
             k += 1
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     click_result = []
     ads_assign = []
     site_avg_reward = []
-    for w in tqdm(range(5000)):
+    for w in tqdm(range(2500)):
 
         site = PageCreator(attributes_1=["M", "F"],
                            attributes_2=["LOW", "MEDIUM", "HIGH"],
@@ -177,31 +177,25 @@ if __name__ == "__main__":
     # file.close()
 
     result = []
-    for i in [2 * k for k in range(1, 1001)]:
-        tmp = []
-        for j in range(len(click_result)):
-            for m in range(len(click_result[j])):
-                if ads_assign[j][m] == i:
-                    if click_result[j][m] not in tmp:
-                        tmp.append(click_result[j][m])
+    # for i in [2 * k for k in range(1, 1001)]:
+    #     tmp = []
+    #     for j in range(len(click_result)):
+    #         for m in range(len(click_result[j])):
+    #             if ads_assign[j][m] == i:
+    #                 if click_result[j][m] not in tmp:
+    #                     tmp.append(click_result[j][m])
+    #
+    #     if len(tmp) > 0:
+    #         result.append(np.mean(tmp))
+    #     else:
+    #         result.append(-1)
 
-        if len(tmp) > 0:
-            result.append(np.mean(tmp))
-        else:
-            result.append(-1)
-
-    # click_result = np.mean(click_result, axis=0)
+    click_result = np.mean(click_result, axis=0)
     print(ads_assign[0])
-    file = open("Ads-wpdda-perf/PDDA_all_cat_present", "w")
-    file.write(str(result[0]))
-    for i in range(1, len(result)):
-        file.write("," + str(result[i]))
+    file = open("Ads-wpdda-perf/greedy_ads_assignment.txt", "w")
+    file.write(str(click_result[0]))
+    for i in range(1, len(click_result)):
+        file.write("," + str(click_result[i]))
     file.close()
-
-
-
-
-
-
 
 

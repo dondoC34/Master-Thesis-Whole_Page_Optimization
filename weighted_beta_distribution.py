@@ -175,6 +175,7 @@ class WeightedBetaDistribution:
 
         return final_result
 
+
 if __name__ == "__main__":
 
     file = open("Ads-wpdda-perf/greedy_assignment_all_cat_present.txt", "r")
@@ -202,12 +203,12 @@ if __name__ == "__main__":
     final_res4 = []
 
     for i in range(len(res1)):
-        if (res2[i] != -1):
+        if res2[i] != -1:
             final_res1.append(res1[i])
             final_res2.append(res2[i])
 
     # plt.plot(np.array(final_res2[45::]) / np.array(final_res1[45::]))
-    tmp = np.array(final_res2) / np.array(final_res1)
+    tmp = np.array(final_res2[15::]) / np.array(final_res1[15::])
     smother = LineSmoother(tmp, iterations=5, values=[[20, 20], [10, 10], [5, 5], [4, 4], [6, 6]])
     tmp = smother.smooth_line()
     # tmp2 = np.array(final_res4) / np.array(final_res3)

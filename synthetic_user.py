@@ -236,48 +236,7 @@ def write_random_users_in_file(filename, number_of_users):
 
 if __name__ == "__main__":
 
-    def slot_avg_clicks(file):
-        clicks = []
-        res = file.readlines()
-        for row in res:
-            clicked = row.split("-")[0].split(",")
-            clicked = list(map(float, clicked))
-            clicks.append(clicked)
-        plt.plot(np.mean(clicks, axis=0))
-        plt.show()
-
-
-    def boxplot_click_dist(file):
-        clicks = []
-        res = file.readlines()
-        clicked_slots = []
-        for _ in range(10):
-            clicked_slots.append([])
-
-        for row in res:
-            pages = row.split("-")[1].split(";")
-            tmp_clicked_slots = np.array([0] * 10)
-            for page in pages:
-                tmp = page.split(",")
-                for i in range(len(tmp)):
-                    if tmp[i] != "0":
-                        tmp_clicked_slots[i] += 1
-
-            tmp_clicked_slots = tmp_clicked_slots / sum(tmp_clicked_slots)
-            clicks.append(tmp_clicked_slots.copy())
-
-        for elem in clicks:
-            for i in range(len(elem)):
-                if elem[i] != 0:
-                    clicked_slots[i].append(elem[i])
-
-        sns.swarmplot(data=clicked_slots)
-        sns.boxplot(data=clicked_slots)
-        plt.show()
-
-
-    file = open("practical_results.txt", "r")
-    boxplot_click_dist(file)
+    pass
 
 
 
