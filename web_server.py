@@ -372,91 +372,99 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(response)
 
         elif self.path.endswith("/end"):
-            self.send_header("content-type", "text/html")
-            self.end_headers()
-            response = encode_html("end_page.html")
-            self.wfile.write(response)
-            user_data_lock.acquire()
-            user_key = self.path.split("/")[1]
-            user_index = user_codes.index(user_key)
-            target_user_data = user_data[user_index]
-            target_user_iterations = iterations[user_index]
-            timestamps[user_index] = time.time()
-            self.logwriter.write_log(["User " + str(user_key) + "of index: " + str(
-                user_index) + " complete page number " + str(target_user_iterations),
-                                      "Active users: " + str(user_codes)])
-            user_data_lock.release()
-            file_saving_lock.acquire()
-            file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results")) + 1) + ".txt", "w")
-            user_data_clicks = target_user_data[2]
-            self.loggerBot.telegram_bot_sendtext(
-                "New Sample!\nClient Address: " + str(self.client_address[0]) + "\nTotal Number Of Samples: " + str(
-                    len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks[0:10]) + "\nLearning Agent: " +
-                    str(target_user_data[-3]) + "\nUser Guess On Learning Agent: " + str(target_user_data[-2]) +
-                    "\nSample Ratio: A: " + str(sample_ratio[0]) + " B: " + str(sample_ratio[1]) +
-                    "\nOptional User Comment: " + target_user_data[-1])
-            self.logwriter.write_log(["User: " + str(user_key) + " clicks: " + str(user_data_clicks[0:10])])
-            file.write(str(user_data_clicks[0]))
-            for i in range(1, 10):
-                file.write("," + str(user_data_clicks[i]))
-            file.write("-")
-            j = 0
-            user_data_clicked_cats = target_user_data[1]
-            user_data_clicked_cats = user_data_clicked_cats[0:10]
-            for page_clicked_cats in user_data_clicked_cats:
-                file.write(str(page_clicked_cats[0]))
-                for i in range(1, len(page_clicked_cats)):
-                    file.write("," + str(page_clicked_cats[i]))
-                j += 1
-                if j < len(user_data_clicked_cats):
-                    file.write(";")
-            file.write("-")
-            j = 0
-            user_data_allocations = target_user_data[0]
-            user_data_allocations = user_data_allocations[0:10]
-            for page_allocation in user_data_allocations:
-                file.write(str(page_allocation[0].news_category))
-                for i in range(1, len(page_allocation)):
-                    file.write("," + str(page_allocation[i].news_category))
-                j += 1
-                if j < len(user_data_allocations):
-                    file.write(";")
-            file.write("-")
-            user_data_inspection = target_user_data[3]
-            file.write(str(user_data_inspection[0]))
-            for i in range(1, 10):
-                file.write("," + str(user_data_inspection[i]))
-            file.write("-")
-            j = 0
-            user_data_img_times = target_user_data[4]
-            user_data_img_times = user_data_img_times[0:10]
-            for page_insp_times in user_data_img_times:
-                file.write(str(page_insp_times[0]))
-                for i in range(1, len(page_insp_times)):
-                    file.write("," + str(page_insp_times[i]))
-                j += 1
-                if j < len(user_data_img_times):
-                    file.write(";")
+            try:
+                self.send_header("content-type", "text/html")
+                self.end_headers()
+                response = encode_html("end_page.html")
+                self.wfile.write(response)
+                user_data_lock.acquire()
+                user_key = self.path.split("/")[1]
+                user_index = user_codes.index(user_key)
+                target_user_data = user_data[user_index]
+                target_user_iterations = iterations[user_index]
+                timestamps[user_index] = time.time()
+                self.logwriter.write_log(["User " + str(user_key) + "of index: " + str(
+                    user_index) + " complete page number " + str(target_user_iterations),
+                                          "Active users: " + str(user_codes)])
+                user_data_lock.release()
+                file_saving_lock.acquire()
+                file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results")) + 1) + ".txt", "w")
+                user_data_clicks = target_user_data[2]
+                self.loggerBot.telegram_bot_sendtext(
+                    "New Sample!\nClient Address: " + str(self.client_address[0]) + "\nTotal Number Of Samples: " + str(
+                        len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks[0:10]) + "\nLearning Agent: " +
+                        str(target_user_data[-3]) + "\nUser Guess On Learning Agent: " + str(target_user_data[-2]) +
+                        "\nSample Ratio: A: " + str(sample_ratio[0]) + " B: " + str(sample_ratio[1]) +
+                        "\nOptional User Comment: " + target_user_data[-1])
+                self.logwriter.write_log(["User: " + str(user_key) + " clicks: " + str(user_data_clicks[0:10])])
+                file.write(str(user_data_clicks[0]))
+                for i in range(1, 10):
+                    file.write("," + str(user_data_clicks[i]))
+                file.write("-")
+                j = 0
+                user_data_clicked_cats = target_user_data[1]
+                user_data_clicked_cats = user_data_clicked_cats[0:10]
+                for page_clicked_cats in user_data_clicked_cats:
+                    file.write(str(page_clicked_cats[0]))
+                    for i in range(1, len(page_clicked_cats)):
+                        file.write("," + str(page_clicked_cats[i]))
+                    j += 1
+                    if j < len(user_data_clicked_cats):
+                        file.write(";")
+                file.write("-")
+                j = 0
+                user_data_allocations = target_user_data[0]
+                user_data_allocations = user_data_allocations[0:10]
+                for page_allocation in user_data_allocations:
+                    file.write(str(page_allocation[0].news_category))
+                    for i in range(1, len(page_allocation)):
+                        file.write("," + str(page_allocation[i].news_category))
+                    j += 1
+                    if j < len(user_data_allocations):
+                        file.write(";")
+                file.write("-")
+                user_data_inspection = target_user_data[3]
+                file.write(str(user_data_inspection[0]))
+                for i in range(1, 10):
+                    file.write("," + str(user_data_inspection[i]))
+                file.write("-")
+                j = 0
+                user_data_img_times = target_user_data[4]
+                user_data_img_times = user_data_img_times[0:10]
+                for page_insp_times in user_data_img_times:
+                    file.write(str(page_insp_times[0]))
+                    for i in range(1, len(page_insp_times)):
+                        file.write("," + str(page_insp_times[i]))
+                    j += 1
+                    if j < len(user_data_img_times):
+                        file.write(";")
 
-            for k in [-1, -2, -3]:
-                file.write(";")
-                file.write(str(target_user_data[k]))
+                for k in [-1, -2, -3]:
+                    file.write(";")
+                    file.write(str(target_user_data[k]))
 
-            file.close()
-            file_saving_lock.release()
-            self.logwriter.write_log(["Saved data for user " + str(user_key)])
-            user_data_lock.acquire()
-            user_index = user_codes.index(user_key)
-            self.logwriter.write_log(
-                ["About to remove data of user: " + str(user_key) + " of index: " + str(user_index)])
-            learners.__delitem__(user_index)
-            timestamps.__delitem__(user_index)
-            user_codes.__delitem__(user_index)
-            iterations.__delitem__(user_index)
-            user_data.__delitem__(user_index)
-            user_data_lock.release()
-            self.logwriter.write_log(
-                ["Removed data. Active users: " + str(user_codes) + " with residual iterations: " + str(iterations)])
+                file.close()
+                file_saving_lock.release()
+                self.logwriter.write_log(["Saved data for user " + str(user_key)])
+                user_data_lock.acquire()
+                user_index = user_codes.index(user_key)
+                self.logwriter.write_log(
+                    ["About to remove data of user: " + str(user_key) + " of index: " + str(user_index)])
+                learners.__delitem__(user_index)
+                timestamps.__delitem__(user_index)
+                user_codes.__delitem__(user_index)
+                iterations.__delitem__(user_index)
+                user_data.__delitem__(user_index)
+                user_data_lock.release()
+                self.logwriter.write_log(
+                    ["Removed data. Active users: " + str(user_codes) + " with residual iterations: " + str(iterations)])
+            except IndexError:
+                if user_data_lock.locked():
+                    user_data_lock.release()
+                if file_saving_lock.locked():
+                    file_saving_lock.release()
+                response = encode_html("session_expired_page.html")
+                self.wfile.write(response)
         elif self.path.endswith("/expired"):
             self.send_header("content-type", "text/html")
             self.end_headers()
