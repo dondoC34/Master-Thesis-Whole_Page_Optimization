@@ -141,21 +141,26 @@
   </div>
 </div>
 
-
-
-
 <script>
   var clicked = false;
+  var page_location = String(window.location);
+  var index = page_location.indexOf("/", 7);
+  var server_location = page_location.slice(0, index + 1);
+
   function startExperience(){
-    window.location =  window.location + "/get_started";
+    if (checkCookie("AIArticleRecommendation") == true) {
+      usercode = getCookie("AIArticleRecommendation");
+      window.location =  server_location + usercode + "/get_started";
+    }
+    else {
+      var random_usercode = randomString(16);
+      setCookie("AIArticleRecommendation", random_usercode, 30);
+      window.location =  server_location + random_usercode + "/get_started";
+    }
   }
   function instructions(){
     window.location =  window.location + "/instructions";
   }
-
-  var page_location = String(window.location);
-  var index = page_location.indexOf("/", 7);
-  var server_location = page_location.slice(0, index + 1);
 
   var elem = document.getElementById("link1");
   elem.href = server_location;
@@ -165,6 +170,48 @@
 
   var elem = document.getElementById("link3");
   elem.href = server_location + "credits";
+
+  function setCookie(cname, cvalue, exdays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    var expires = "expires="+ d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+  }
+  function getCookie(cname) {
+    var name = cname + "=";
+    var decodedCookie = decodeURIComponent(document.cookie);
+    var ca = decodedCookie.split(';');
+    for(var i = 0; i <ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0) == ' ') {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+      }
+    }
+    return "";
+  }
+
+  function checkCookie(cname) {
+    var user=getCookie(cname);
+    if (user != "") {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  function randomString(length) {
+    var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    var result = '';
+    for (var i = length; i > 0; --i){
+      result += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return result;
+  }
+
 </script>
 
 <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>

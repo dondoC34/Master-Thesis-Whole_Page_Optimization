@@ -31,7 +31,7 @@ class PageCreator:
                                                  news_column_pivot=[0.01, 2],
                                                  ads_allocation=True,
                                                  ads_allocation_technique="res_LP",
-                                                 ads_allocation_approach="pdda",
+                                                 ads_allocation_approach="wpdda",
                                                  ))
 
             self.learner_matrix.append(attribute_row.copy())
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     click_result = []
     ads_assign = []
     site_avg_reward = []
-    for w in tqdm(range(2500)):
+    for w in tqdm(range(5000)):
 
         site = PageCreator(attributes_1=["M", "F"],
                            attributes_2=["LOW", "MEDIUM", "HIGH"],
@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
     click_result = np.mean(result, axis=0)
     print(ads_assign[0])
-    file = open("Ads-wpdda-perf/PDDA", "w")
+    file = open("Ads-wpdda-perf/WPDDA.txt", "w")
     file.write(str(result[0]))
     for i in range(1, len(result)):
         file.write("," + str(result[i]))

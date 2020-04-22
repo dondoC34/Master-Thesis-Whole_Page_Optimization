@@ -18,6 +18,8 @@
   </button>
 
   <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+    </ul>
     <button class="btn btn-outline-success my-2 my-sm-0" onclick=next()>Next</button>
   </div>
 </nav>
@@ -82,9 +84,9 @@
 
 
 <script>
-  var user_id = ;
+  var user_id =  ;
   var clicked = [false, false, false, false, false, false, false, false, false, false, false, false, false];
-  var img_names = ;
+  var img_names =  ;
   var init_page_time = new Date().getTime();
   var init_image_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   var image_inspection_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -132,7 +134,7 @@
       xhr.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
         if (this.responseText == "expired"){
-          window.location = server_location + "expired"
+          window.location = server_location + "expired";
         }
         else {
           window.location = server_location + this.responseText + "/next";
@@ -140,7 +142,7 @@
       }
       };
       xhr.open("POST", server_location, false);
-      var to_send = {id: user_id, clicked: clicked, inspection_time: current_time - init_page_time, image_inspection_times: image_inspection_time};
+      var to_send = {type:"data", id: user_id, clicked: clicked, inspection_time: current_time - init_page_time, image_inspection_times: image_inspection_time};
       to_send = JSON.stringify(to_send);
       xhr.send(to_send);
     }

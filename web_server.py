@@ -10,10 +10,13 @@ from socketserver import ThreadingMixIn
 import threading
 
 last_visit = [0.0]
+sample_ratio = [0, 0]
 last_visit_lock = threading.Lock()
 user_data_lock = threading.Lock()
 timestamps_lock = threading.Lock()
 file_saving_lock = threading.Lock()
+user_cookies_values = {}
+learner_feedback = False
 user_codes = []
 learners = []
 timestamps = []
@@ -65,9 +68,6 @@ for elem in news_pool:
     cat_index = categories.index(elem.news_category)
     news_pool_cat_sorted[cat_index].append(elem)
 
-
-
-
 k = 0
 for category in ["sport", "cibo", "tech", "politic", "gossip", "scienza"]:
     for id in range(1, 91):
@@ -117,8 +117,19 @@ def encode_news_page(html_file, user_id, news_list, page_nr):
         result += line
 
     result = result[0:656 + 2] + str(page_nr) + result[656 + 2::]
-    result = result[0:4488 + 10] + "'" + str(user_id) + "'" + result[4488 + 10::]
-    result = result[0:4633 + 12] + str(news_names) + result[4633 + 12::]
+    result = result[0:4534 + 10] + "'" + str(user_id) + "'" + result[4534 + 10::]
+    result = result[0:4681 + 12] + str(news_names) + result[4681 + 12::]
+    return result.encode()
+
+
+def encode_form_page(html_file, user_id):
+    lines = open(html_file, "r").readlines()
+    result = ""
+
+    for line in lines:
+        result += line
+
+    result = result[0:2691 + 10] + "'" + str(user_id) + "'" + result[2691 + 10::]
     return result.encode()
 
 
@@ -229,6 +240,18 @@ class RequestHandler(BaseHTTPRequestHandler):
             user_key = key_gen(16)
             while user_key in user_codes:
                 user_key = key_gen(16)
+            
+            cookie_code = self.path.split("/")[1]
+            if cookie_code not in user_cookies_values:
+                learning_agent = np.random.choice([True, False])
+                user_cookies_values[cookie_code] = learning_agent
+            else:
+                learning_agent = user_cookies_values[cookie_code]
+
+            if learning_agent:
+                sample_ratio[0] += 1
+            else:
+                sample_ratio[1] += 1
 
             user_data_lock.acquire()
             user_codes.append(user_key)
@@ -238,11 +261,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             timestamps.append(time.time())
             timestamps_lock.release()
             user_index = user_codes.index(user_key)
-            for _ in range(7):
+            for _ in range(8):
                 user_data[user_index].append([])
+            user_data[user_index][-1] = learning_agent
             for i in range(len(categories)):
-                user_data[user_index][-1].append(news_pool_cat_sorted[i].copy())
-                user_data[user_index][-2].append(extended_news_pool[i].copy())
+                user_data[user_index][-2].append(news_pool_cat_sorted[i].copy())
+                user_data[user_index][-3].append(extended_news_pool[i].copy())
 
             learners.append(NewsLearner(categories=categories,
                                         layout_slots=len(real_slot_promenances),
@@ -256,18 +280,19 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.logwriter.write_log(["user " + str(user_key) + " joined.", "active users: " + str(user_codes),
                                       "current user index: " + str(user_index)])
             user_data_lock.release()
-            allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None)
+            allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None,
+                                                                  update_assignment_matrices=learning_agent)
             cat_index = categories.index(allocation[0].news_category)
-            if len(target_user_data[-2][cat_index]) == 0:
-                target_user_data[-2][cat_index] = extended_news_pool[cat_index].copy()
-            allocation[0] = np.random.choice(target_user_data[-2][cat_index])
-            target_user_data[-2][cat_index].remove(allocation[0])
+            if len(target_user_data[-3][cat_index]) == 0:
+                target_user_data[-3][cat_index] = extended_news_pool[cat_index].copy()
+            allocation[0] = np.random.choice(target_user_data[-3][cat_index])
+            target_user_data[-3][cat_index].remove(allocation[0])
             for k in range(1, len(allocation)):
                 cat_index = categories.index(allocation[k].news_category)
-                if len(target_user_data[-1][cat_index]) == 0:
-                    target_user_data[-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
-                allocation[k] = np.random.choice(target_user_data[-1][cat_index])
-                target_user_data[-1][cat_index].remove(allocation[k])
+                if len(target_user_data[-2][cat_index]) == 0:
+                    target_user_data[-2][cat_index] = news_pool_cat_sorted[cat_index].copy()
+                allocation[k] = np.random.choice(target_user_data[-2][cat_index])
+                target_user_data[-2][cat_index].remove(allocation[k])
             target_user_data[0].append(allocation.copy())
             response = encode_news_page("news_page.html", user_key, allocation, 1)
             self.wfile.write(response)
@@ -310,86 +335,26 @@ class RequestHandler(BaseHTTPRequestHandler):
                 user_data_lock.release()
 
                 if target_user_iterations < 10:
-                    allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None)
+                    allocation = target_user_learner.find_best_allocation(interest_decay=False, user=None,
+                                                                          update_assignment_matrices=target_user_data[-1])
                     cat_index = categories.index(allocation[0].news_category)
-                    if len(target_user_data[-2][cat_index]) == 0:
-                        target_user_data[-2][cat_index] = extended_news_pool[cat_index].copy()
-                    allocation[0] = np.random.choice(target_user_data[-2][cat_index])
-                    target_user_data[-2][cat_index].remove(allocation[0])
+                    if len(target_user_data[-3][cat_index]) == 0:
+                        target_user_data[-3][cat_index] = extended_news_pool[cat_index].copy()
+                    allocation[0] = np.random.choice(target_user_data[-3][cat_index])
+                    target_user_data[-3][cat_index].remove(allocation[0])
                     for k in range(1, len(allocation)):
                         cat_index = categories.index(allocation[k].news_category)
-                        if len(target_user_data[-1][cat_index]) == 0:
-                            target_user_data[-1][cat_index] = news_pool_cat_sorted[cat_index].copy()
-                        allocation[k] = np.random.choice(target_user_data[-1][cat_index])
-                        target_user_data[-1][cat_index].remove(allocation[k])
+                        if len(target_user_data[-2][cat_index]) == 0:
+                            target_user_data[-2][cat_index] = news_pool_cat_sorted[cat_index].copy()
+                        allocation[k] = np.random.choice(target_user_data[-2][cat_index])
+                        target_user_data[-2][cat_index].remove(allocation[k])
                     target_user_data[0].append(allocation.copy())
                     response = encode_news_page("news_page.html", user_key, allocation, target_user_iterations + 1)
                     self.wfile.write(response)
                     self.logwriter.write_log(["Response sent to " + str(user_key)])
                 else:
-                    response = encode_html("end_page.html")
+                    response = encode_form_page("form_page.html", user_key)
                     self.wfile.write(response)
-                    self.logwriter.write_log(["About to save data for user " + str(user_key)])
-                    file_saving_lock.acquire()
-                    file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results")) + 1) + ".txt", "w")
-                    user_data_clicks = target_user_data[2]
-                    self.loggerBot.telegram_bot_sendtext("New Sample!\nClient Address: " + str(self.client_address[0]) + "\nTotal Number Of Samples: " + str(len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks[0:10]))
-                    self.logwriter.write_log(["User: " + str(user_key) + " clicks: " + str(user_data_clicks[0:10])])
-                    file.write(str(user_data_clicks[0]))
-                    for i in range(1, 10):
-                        file.write("," + str(user_data_clicks[i]))
-                    file.write("-")
-                    j = 0
-                    user_data_clicked_cats = target_user_data[1]
-                    user_data_clicked_cats = user_data_clicked_cats[0:10]
-                    for page_clicked_cats in user_data_clicked_cats:
-                        file.write(str(page_clicked_cats[0]))
-                        for i in range(1, len(page_clicked_cats)):
-                            file.write("," + str(page_clicked_cats[i]))
-                        j += 1
-                        if j < len(user_data_clicked_cats):
-                            file.write(";")
-                    file.write("-")
-                    j = 0
-                    user_data_allocations = target_user_data[0]
-                    user_data_allocations = user_data_allocations[0:10]
-                    for page_allocation in user_data_allocations:
-                        file.write(str(page_allocation[0].news_category))
-                        for i in range(1, len(page_allocation)):
-                            file.write("," + str(page_allocation[i].news_category))
-                        j += 1
-                        if j < len(user_data_allocations):
-                            file.write(";")
-                    file.write("-")
-                    user_data_inspection = target_user_data[3]
-                    file.write(str(user_data_inspection[0]))
-                    for i in range(1, 10):
-                        file.write("," + str(user_data_inspection[i]))
-                    file.write("-")
-                    j = 0
-                    user_data_img_times = target_user_data[4]
-                    user_data_img_times = user_data_img_times[0:10]
-                    for page_insp_times in user_data_img_times:
-                        file.write(str(page_insp_times[0]))
-                        for i in range(1, len(page_insp_times)):
-                            file.write("," + str(page_insp_times[i]))
-                        j += 1
-                        if j < len(user_data_img_times):
-                            file.write(";")
-
-                    file.close()
-                    file_saving_lock.release()
-                    self.logwriter.write_log(["Saved data for user " + str(user_key)])
-                    user_data_lock.acquire()
-                    user_index = user_codes.index(user_key)
-                    self.logwriter.write_log(["About to remove data of user: " + str(user_key) + " of index: " + str(user_index)])
-                    learners.__delitem__(user_index)
-                    timestamps.__delitem__(user_index)
-                    user_codes.__delitem__(user_index)
-                    iterations.__delitem__(user_index)
-                    user_data.__delitem__(user_index)
-                    user_data_lock.release()
-                    self.logwriter.write_log(["Removed data. Active users: " + str(user_codes) + " with residual iterations: " + str(iterations)])
 
             except ValueError:
                 if user_data_lock.locked():
@@ -411,6 +376,87 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             response = encode_html("end_page.html")
             self.wfile.write(response)
+            user_data_lock.acquire()
+            user_key = self.path.split("/")[1]
+            user_index = user_codes.index(user_key)
+            target_user_data = user_data[user_index]
+            target_user_iterations = iterations[user_index]
+            timestamps[user_index] = time.time()
+            self.logwriter.write_log(["User " + str(user_key) + "of index: " + str(
+                user_index) + " complete page number " + str(target_user_iterations),
+                                      "Active users: " + str(user_codes)])
+            user_data_lock.release()
+            file_saving_lock.acquire()
+            file = open("WebApp_Results/result" + str(len(os.listdir("WebApp_Results")) + 1) + ".txt", "w")
+            user_data_clicks = target_user_data[2]
+            self.loggerBot.telegram_bot_sendtext(
+                "New Sample!\nClient Address: " + str(self.client_address[0]) + "\nTotal Number Of Samples: " + str(
+                    len(os.listdir("WebApp_Results"))) + "\nClicks: " + str(user_data_clicks[0:10]) + "\nLearning Agent: " +
+                    str(target_user_data[-3]) + "\nUser Guess On Learning Agent: " + str(target_user_data[-2]) +
+                    "\nSample Ratio: A: " + str(sample_ratio[0]) + " B: " + str(sample_ratio[1]) +
+                    "\nOptional User Comment: " + target_user_data[-1])
+            self.logwriter.write_log(["User: " + str(user_key) + " clicks: " + str(user_data_clicks[0:10])])
+            file.write(str(user_data_clicks[0]))
+            for i in range(1, 10):
+                file.write("," + str(user_data_clicks[i]))
+            file.write("-")
+            j = 0
+            user_data_clicked_cats = target_user_data[1]
+            user_data_clicked_cats = user_data_clicked_cats[0:10]
+            for page_clicked_cats in user_data_clicked_cats:
+                file.write(str(page_clicked_cats[0]))
+                for i in range(1, len(page_clicked_cats)):
+                    file.write("," + str(page_clicked_cats[i]))
+                j += 1
+                if j < len(user_data_clicked_cats):
+                    file.write(";")
+            file.write("-")
+            j = 0
+            user_data_allocations = target_user_data[0]
+            user_data_allocations = user_data_allocations[0:10]
+            for page_allocation in user_data_allocations:
+                file.write(str(page_allocation[0].news_category))
+                for i in range(1, len(page_allocation)):
+                    file.write("," + str(page_allocation[i].news_category))
+                j += 1
+                if j < len(user_data_allocations):
+                    file.write(";")
+            file.write("-")
+            user_data_inspection = target_user_data[3]
+            file.write(str(user_data_inspection[0]))
+            for i in range(1, 10):
+                file.write("," + str(user_data_inspection[i]))
+            file.write("-")
+            j = 0
+            user_data_img_times = target_user_data[4]
+            user_data_img_times = user_data_img_times[0:10]
+            for page_insp_times in user_data_img_times:
+                file.write(str(page_insp_times[0]))
+                for i in range(1, len(page_insp_times)):
+                    file.write("," + str(page_insp_times[i]))
+                j += 1
+                if j < len(user_data_img_times):
+                    file.write(";")
+
+            for k in [-1, -2, -3]:
+                file.write(";")
+                file.write(str(target_user_data[k]))
+
+            file.close()
+            file_saving_lock.release()
+            self.logwriter.write_log(["Saved data for user " + str(user_key)])
+            user_data_lock.acquire()
+            user_index = user_codes.index(user_key)
+            self.logwriter.write_log(
+                ["About to remove data of user: " + str(user_key) + " of index: " + str(user_index)])
+            learners.__delitem__(user_index)
+            timestamps.__delitem__(user_index)
+            user_codes.__delitem__(user_index)
+            iterations.__delitem__(user_index)
+            user_data.__delitem__(user_index)
+            user_data_lock.release()
+            self.logwriter.write_log(
+                ["Removed data. Active users: " + str(user_codes) + " with residual iterations: " + str(iterations)])
         elif self.path.endswith("/expired"):
             self.send_header("content-type", "text/html")
             self.end_headers()
@@ -438,7 +484,6 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             user_data_lock.acquire()
             user_id = data["id"]
-            user_clicks = data["clicked"]
             user_index = user_codes.index(user_id)
             user_alloc = user_data[user_index][0][-1]
             user_learner = learners[user_index]
@@ -448,39 +493,49 @@ class RequestHandler(BaseHTTPRequestHandler):
                                       "Currently active users: " + str(user_codes)])
             user_data_lock.release()
 
-            num_of_clicks = 0
-            clicked_elements = []
-            for elem in user_clicks:
-                if (elem is not True) and (elem is not False):
-                    raise KeyError()
+            if data["type"] == "data":
+                user_clicks = data["clicked"]
+                num_of_clicks = 0
+                clicked_elements = []
+                for elem in user_clicks:
+                    if (elem is not True) and (elem is not False):
+                        raise KeyError()
 
-            for i in range(len(user_clicks)):
-                if user_clicks[i]:
-                    num_of_clicks += 1
-                    clicked_elements.append(user_alloc[i].news_category)
-                    user_learner.news_click(user_alloc[i], user=None, slot_nr=[i], interest_decay=False)
+                for i in range(len(user_clicks)):
+                    if user_clicks[i]:
+                        num_of_clicks += 1
+                        clicked_elements.append(user_alloc[i].news_category)
+                        if target_user_data[-1]:
+                            user_learner.news_click(user_alloc[i], user=None, slot_nr=[i], interest_decay=False)
+                    else:
+                        clicked_elements.append(0)
+
+                target_user_data[1].append(clicked_elements.copy())
+                target_user_data[2].append(num_of_clicks)
+                if isinstance(data["inspection_time"], numbers.Number):
+                    target_user_data[3].append(data["inspection_time"])
                 else:
-                    clicked_elements.append(0)
-
-            target_user_data[1].append(clicked_elements.copy())
-            target_user_data[2].append(num_of_clicks)
-            if isinstance(data["inspection_time"], numbers.Number):
-                target_user_data[3].append(data["inspection_time"])
-            else:
-                raise KeyError()
-            for elem in data["image_inspection_times"]:
-                if not isinstance(elem, numbers.Number):
                     raise KeyError()
-            target_user_data[4].append(data["image_inspection_times"])
+                for elem in data["image_inspection_times"]:
+                    if not isinstance(elem, numbers.Number):
+                        raise KeyError()
+                target_user_data[4].append(data["image_inspection_times"])
 
-            self.logwriter.write_log(["Saved data of user " + str(user_id)])
+                self.logwriter.write_log(["Saved data of user " + str(user_id)])
 
-            self.send_response(200)
-            self.send_header("content-type", "text/html")
-            self.end_headers()
-            self.wfile.write(str(user_id).encode())
-            self.logwriter.write_log(["Response sent to " + str(user_id),
-                                      "Active users: " + str(user_codes)])
+                self.send_response(200)
+                self.send_header("content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(str(user_id).encode())
+                self.logwriter.write_log(["Response sent to " + str(user_id),
+                                          "Active users: " + str(user_codes)])
+            else:
+                target_user_data.append(data["answer"])
+                target_user_data.append(data["text"])
+                self.send_response(200)
+                self.send_header("content-type", "text/html")
+                self.end_headers()
+                self.wfile.write(str(user_id).encode())
 
         except ValueError:
             user_data_lock.release()
