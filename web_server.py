@@ -458,7 +458,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 user_data_lock.release()
                 self.logwriter.write_log(
                     ["Removed data. Active users: " + str(user_codes) + " with residual iterations: " + str(iterations)])
-            except IndexError:
+            except ValueError:
                 if user_data_lock.locked():
                     user_data_lock.release()
                 if file_saving_lock.locked():
