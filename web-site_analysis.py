@@ -7,6 +7,7 @@ from scipy.cluster.hierarchy import *
 from sklearn.preprocessing import StandardScaler
 from fastdtw import fastdtw
 import scipy.spatial.distance as ssd
+from scipy.stats import norm, chi2, t
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 import matplotlib.cm as cm
@@ -18,6 +19,13 @@ pd.set_option("display.max_rows", 200)
 
 
 def dtw(ts1, ts2, derivative=False):
+    """
+    Dynamic time warping algorithm between two time series
+    :param ts1: 1D list respresenting a time series
+    :param ts2: 1D list respresenting a time series
+    :param derivative: if derivative or classic dynamic time warping
+    :return: a distance measure according to dtw
+    """
     s = ts1
     t = ts2
 
@@ -46,18 +54,20 @@ def dtw(ts1, ts2, derivative=False):
     return dtw_matrix[-1][-1]
 
 
-def extract_statistics():
+def extract_statistics(folder, ab_test=False):
     clicks_per_page = []
     page_inspection_times = []
     clicked_categories_per_page_per_user = []
     whole_experience_allocated_categories = []
+    learning_agent = []
+    user_guess_on_learning_agent = []
     result = []
 
-    for filename in os.listdir("WebApp_Results"):
-
+    for filename in os.listdir(folder):
+        print(filename)
         clicked_categories = [0] * len(categories)
         allocated_categories = [0] * len(categories)
-        file = open("WebApp_Results/" + filename, "r").read()
+        file = open(folder + "/" + filename, "r").read()
         file = file.split("-")
 
         clicks = file[0].split(",")
@@ -88,27 +98,62 @@ def extract_statistics():
         page_insp = list(np.array(page_insp) / 1000)
         page_inspection_times.append(page_insp.copy())
 
+        if ab_test:
+            learning_agent.append(file[-1].split(";")[-1])
+            guess = file[-1].split(";")[-2]
+            if guess == "True":
+                user_guess_on_learning_agent.append(1)
+            else:
+                user_guess_on_learning_agent.append(0)
+
     for i in range(len(clicks_per_page)):
-        result.append(clicks_per_page[i] + clicked_categories_per_page_per_user[i] +
-                      whole_experience_allocated_categories[i] + page_inspection_times[i])
+        if not ab_test:
+            result.append(clicks_per_page[i] + clicked_categories_per_page_per_user[i] +
+                          whole_experience_allocated_categories[i] + page_inspection_times[i])
+        else:
+            result.append(clicks_per_page[i] + clicked_categories_per_page_per_user[i] +
+                          whole_experience_allocated_categories[i] + page_inspection_times[i] + [learning_agent[i]] +
+                          [user_guess_on_learning_agent[i]])
 
     return result
 
 
-def prepare_data_frame(statistics):
-    frame = pd.DataFrame(data=statistics, columns=["Page-1-Clicks", "Page-2-Clicks", "Page-3-Clicks", "Page-4-Clicks",
-                                                   "Page-5-Clicks", "Page-6-Clicks", "Page-7-Clicks", "Page-8-Clicks",
-                                                   "Page-9-Clicks", "Page-10-Clicks", "Food-Clicks", "Gossip-Clicks",
-                                                   "Politic-Clicks", "Science-Clicks", "Sport-Clicks", "Tech-Clicks",
-                                                   "Food-Allocations", "Gossip-Allocations", "Politic-Allocations",
-                                                   "Science-Allocations", "Sport-Allocations", "Tech-Allocations",
-                                                   "Page-1-Time", "Page-2-Time", "Page-3-Time", "Page-4-Time",
-                                                   "Page-5-Time", "Page-6-Time", "Page-7-Time", "Page-8-Time",
-                                                   "Page-9-Time", "Page-10-Time"])
+def prepare_data_frame(statistics, ab_test=False):
+    if ab_test:
+        frame = pd.DataFrame(data=statistics, columns=["Page-1-Clicks", "Page-2-Clicks", "Page-3-Clicks", "Page-4-Clicks",
+                                                       "Page-5-Clicks", "Page-6-Clicks", "Page-7-Clicks", "Page-8-Clicks",
+                                                       "Page-9-Clicks", "Page-10-Clicks", "Food-Clicks", "Gossip-Clicks",
+                                                       "Politic-Clicks", "Science-Clicks", "Sport-Clicks", "Tech-Clicks",
+                                                       "Food-Allocations", "Gossip-Allocations", "Politic-Allocations",
+                                                       "Science-Allocations", "Sport-Allocations", "Tech-Allocations",
+                                                       "Page-1-Time", "Page-2-Time", "Page-3-Time", "Page-4-Time",
+                                                       "Page-5-Time", "Page-6-Time", "Page-7-Time", "Page-8-Time",
+                                                       "Page-9-Time", "Page-10-Time"])
+    else:
+        frame = pd.DataFrame(data=statistics,
+                             columns=["Page-1-Clicks", "Page-2-Clicks", "Page-3-Clicks", "Page-4-Clicks",
+                                      "Page-5-Clicks", "Page-6-Clicks", "Page-7-Clicks", "Page-8-Clicks",
+                                      "Page-9-Clicks", "Page-10-Clicks", "Food-Clicks", "Gossip-Clicks",
+                                      "Politic-Clicks", "Science-Clicks", "Sport-Clicks", "Tech-Clicks",
+                                      "Food-Allocations", "Gossip-Allocations", "Politic-Allocations",
+                                      "Science-Allocations", "Sport-Allocations", "Tech-Allocations",
+                                      "Page-1-Time", "Page-2-Time", "Page-3-Time", "Page-4-Time",
+                                      "Page-5-Time", "Page-6-Time", "Page-7-Time", "Page-8-Time",
+                                      "Page-9-Time", "Page-10-Time", "Learning_Agent", "User_Guess_Learning_Agent"])
+
     return frame
 
 
 def elbow_knee_analysis(frame, merges, k_values, interested_columns, derivative=False):
+    """
+    Plot the elbow knee analysis given a dataframe and the set of values of clustering
+    :param frame: pandas dataframe
+    :param merges: the output of scipy clustering method: linkage
+    :param k_values: the values of cluster configurations to plot
+    :param interested_columns: the value according to which we want to compute the distance among clusters
+    :param derivative: if true derivative dtw is used
+    :return: nothing
+    """
     wss_values = []
     bss_values = []
 
@@ -151,6 +196,14 @@ def read_dm_from_file(filename):
 
 
 def build_dm_from_frame_to_file(target_frame, interested_columns, filename, derivative=False):
+    """
+    Create a distance matrix according to dynamic time warping measure and save it into a file
+    :param target_frame: pandas dataframe
+    :param interested_columns: the columns we want to use to generate clusters
+    :param filename: the file in which to save the matrix
+    :param derivative: if true it uses derivative dtw
+    :return: Nothing
+    """
     distance_matrix = []
     frame = target_frame
     frame.reset_index(inplace=True)
@@ -176,6 +229,13 @@ def build_dm_from_frame_to_file(target_frame, interested_columns, filename, deri
 
 
 def build_dm_from_data_to_file(data, filename, derivative=False):
+    """
+    Creates a distance matrix according to Dynamic Time Warping algorithm and save it into a file
+    :param data: pandas dataframe
+    :param filename:
+    :param derivative: if dynamic time warping should be derivative or normal
+    :return: None
+    """
     distance_matrix = []
 
     for _ in range(len(data)):
@@ -247,6 +307,16 @@ def add_categories_per_page_clicks_to_frame(frame, category, drop_threshold):
 
 
 def snake_plot(frame, interested_columns, title, legend, xlabel, ylabel):
+    """
+    Plots a snake plot of each of the interested columns
+    :param frame: pandas dataframe
+    :param interested_columns: to be included in the plot
+    :param title: the title of the plot
+    :param legend: legend of the plot
+    :param xlabel: label on x
+    :param ylabel: label on y
+    :return: Nothing
+    """
     melt_frame = pd.melt(frame,
                          id_vars=['cluster'],
                          value_vars=interested_columns,
@@ -263,7 +333,14 @@ def snake_plot(frame, interested_columns, title, legend, xlabel, ylabel):
 
 
 def plot_silhouette_scores(frame, range_n_clusters, diversity_matrix, merges):
-
+    """
+    Plots the silhouette scores of the frame for each of the specified clusters.
+    :param frame: pandas dataframe
+    :param range_n_clusters: number of cluster of which we want to plot the scores
+    :param diversity_matrix: a precomputed distance matrix
+    :param merges: returned by the scipy Linkage method
+    :return: Nothing
+    """
     for n_clusters in range_n_clusters:
         # Create a subplot with 1 row and 2 columns
         fig, ax1 = plt.subplots(1, 1)
@@ -321,7 +398,7 @@ def plot_silhouette_scores(frame, range_n_clusters, diversity_matrix, merges):
         ax1.set_yticks([])  # Clear the yaxis labels / ticks
         ax1.set_xticks([-0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1])
 
-        plt.title("Silhouette Analysis For DTW H. Clustering")
+        plt.title("Silhouette Analysis For DDTW H. Clustering")
 
     plt.show()
 
@@ -355,25 +432,76 @@ def create_image_insp_times_frame():
     return times_frame
 
 
+def bootstrapping_variance_estimation(data, iterations=100):
+    """
+    Compute the boostrapped variance of data
+    :param data: 1D list of float
+    :param iterations: Iterations of the boostrapping method
+    :return: the estimated variance's mean
+    """
+    bootstrapped_variance = []
+    for i in tqdm(range(1)):
+        data_at_index_i = [elem for elem in data]
+
+        variance_estimation = []
+        for _ in range(iterations):
+            bootstrapped_data = []
+            for _ in range(len(data_at_index_i)):
+                bootstrapped_data.append(np.random.choice(data_at_index_i))
+            variance_estimation.append(np.var(bootstrapped_data))
+
+        bootstrapped_variance.append(np.mean(variance_estimation, axis=0))
+
+    return bootstrapped_variance
+
+
+def compute_p_value(frame, interested_columns=["Page-" + str(j) + "-Clicks" for j in range(1, 11)]):
+    """
+    For each of the columns specified in interested columns, perform a Z-test (bootstrapping the variance) and return
+    the p-value for each test
+    :param frame: A pandas dataframe. The frame must contain a column named learning agent, which is boolean, to discriminate
+    for the test
+    :param interested_columns: the columns on which we want to perform the Z-test
+    :return: 1D list of floats represent the p-values of each column in interested columns
+    """
+    frame_learning = frame[frame["Learning_Agent"]]
+    frame_not_learning = frame[frame["Learning_Agent"] == False]
+    p_values = []
+    var_learning = bootstrapping_variance_estimation(
+        frame_learning.loc[:, interested_columns].values,
+        iterations=1000)
+    var_random = bootstrapping_variance_estimation(
+        frame_not_learning.loc[:, interested_columns].values,
+        iterations=1000)
+
+    for i in range(len(interested_columns)):
+        mean_learning = frame_learning[interested_columns[i]].mean()
+        mean_random = frame_not_learning[interested_columns[i]].mean()
+        Z = (mean_learning - mean_random) / np.sqrt(
+            var_learning[i] / len(frame_learning) + var_random[i] / len(frame_not_learning))
+
+        p_values.append(1 - norm.cdf(Z))
+
+    return p_values
+
+
+def chi_test_goodness_of_fit(dimension1, dimension2):
+    """
+    Perform a chi-squared goodness of fit test over two sample of dimension1 and dimension2 respectively.
+    :param dimension1: Integer representing the dimension of the first sample
+    :param dimension2: Integer representing the dimension of the second sample
+    :return: The p-value corresponding to the test
+    """
+    total_len = (dimension1 + dimension2) / 2
+
+    X = (dimension1 - total_len) ** 2 / total_len + (dimension2 - total_len) ** 2 / total_len
+    return 1 - chi2.cdf(X, df=1)
+
+
 if __name__ == "__main__":
-    distance_matrix = read_dm_from_file("derivative-dtw-clicks-distance-matrix.txt")
-    frame = pd.read_csv("WebSite_Results_Wo_Time_OL.csv")
-    assert ssd.is_valid_dm(distance_matrix)
-    condensed_distance_matrix = ssd.squareform(distance_matrix, checks=False)
-    merges = linkage(condensed_distance_matrix, method="complete")
-
-    # plot_silhouette_scores(frame, [2, 3, 4, 6], distance_matrix, merges)
-    clusters = fcluster(merges, 4, "maxclust")
-    frame["cluster"] = clusters
-    scores = silhouette_samples(distance_matrix, clusters, metric="precomputed")
-    # frame["score"] = scores
-    for k in range(1, 100000):
-        if len(frame[frame["cluster"] == k]) == 0:
-            break
-        print(k, len(frame[frame["cluster"] == k]))
-
-    snake_plot(frame, ["Page-" + str(i) + "-Clicks" for i in range(1, 11)], "Snake Plot For "
-                                                                            "DTW H. Clustering",
-               ["Cluster 1: 11 Datapoints", "Cluster 2: 149 Datapoints", "Cluster 3: 48 Datapoints", "Cluster 4: 48 Datapoints"],
-               "Page Number", "Average Clicks")
-
+    frame = pd.read_csv("AB_Test_Frame_wo_Outliers.csv")
+    frame = frame[frame["Learning_Agent"] == True]
+    print(frame.describe())
+    sns.regplot(x="Science-Clicks", y="Science-Allocations", data=frame, color="green")
+    plt.title("Linear Trend for Science Clicks-Allocations")
+    plt.show()

@@ -17,9 +17,14 @@ class News:
         self.slot_promenance_cumsum = 0
         self.click_sum = 0
         self.prova = [1, 2, 3]
-        self.doubled_news_indexes = [-1, -1]
+        self.doubled_news_indexes = [-1, -1]  # USED WHEN WE ADOPT THE ALT_LP FORMULATION IN NEWSLEARNER
 
     def set_sampled_quality(self, value):
+        """
+        Set the quality of the news with the value "value"
+        :param value: Float parameter
+        :return: nothing
+        """
         self.sampled_quality = value
 
 
@@ -54,22 +59,6 @@ class Ad:
         else:
             return True
 
-
-if __name__ == "__main__":
-
-    file = open("regret_M_27_C3_N300_L5_FI0.txt", "r")
-    res = file.read().splitlines()
-    best = float(res[1])
-    res = res[0].split(",")
-    res = list(map(float, res))
-    res = np.cumsum(best - np.array(res))
-    logg = [0]
-    for i in range(1, len(res)):
-        logg.append(1.5 * np.log(i))
-    logg = np.array(logg) + res[0]
-    plt.plot(res, "r")
-    plt.plot(logg)
-    plt.show()
 
 
 

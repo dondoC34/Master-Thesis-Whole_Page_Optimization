@@ -9,6 +9,10 @@ import numbers
 from socketserver import ThreadingMixIn
 import threading
 
+"""
+Simple python multi-thread webserver which hosts our Agent and collect the data of each user.
+"""
+
 last_visit = [0.0]
 sample_ratio = [0, 0]
 last_visit_lock = threading.Lock()

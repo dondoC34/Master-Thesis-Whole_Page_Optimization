@@ -3,11 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from ads_news import *
 from Line_Smoother import *
+import pandas as pd
 
 
 class WeightedBetaDistribution:
 
-    def __init__(self, categories, layout_slots, real_slot_promenances, target_dist_auto_increasing=False):
+    def __init__(self, categories, layout_slots, real_slot_promenances):
         self.categories = categories
         self.layout_slots = layout_slots
         self.real_slot_promenances = real_slot_promenances
@@ -44,6 +45,7 @@ class WeightedBetaDistribution:
 
             if count % 30000 == 0:
                 self.category_sw[category_index] = True
+                self.plot_distribution(category)
                 removed_sample = self.sample_per_category[category_index].pop(0)
                 self.category_per_slot_assignment_count[category_index][removed_sample[0]] -= 1
                 self.category_per_slot_reward_count[category_index][removed_sample[0]] -= removed_sample[1]
@@ -174,56 +176,4 @@ class WeightedBetaDistribution:
             x_value += 0.001
 
         return final_result
-
-
-if __name__ == "__main__":
-
-    file = open("Ads-wpdda-perf/PDDA_all_cat_present", "r")
-    res1 = file.read().split(",")
-    res1 = list(map(float, res1))
-    file.close()
-    file = open("Ads-wpdda-perf/WPDDA_all_cat_present", "r")
-    res2 = file.read().split(",")
-    res2 = list(map(float, res2))
-    file.close()
-
-    # file = open("Ads-wpdda-perf/PDDA_all_cat_present", "r")
-    # res3 = file.read().split(",")
-    # res3 = list(map(float, res3))
-    # file.close()
-    #
-    # file = open("Ads-wpdda-perf/WPDDA_all_cat_present", "r")
-    # res4 = file.read().split(",")
-    # res4 = list(map(float, res4))
-    # file.close()
-
-    final_res1 = []
-    final_res2 = []
-    final_res3 = []
-    final_res4 = []
-
-    for i in range(len(res1)):
-        if (res2[i] != -1) and (res1[i] != -1):
-            final_res1.append(res1[i])
-            final_res2.append(res2[i])
-
-    # plt.plot(np.array(final_res2[45::]) / np.array(final_res1[45::]))
-    tmp = np.array(final_res2[15::]) / np.array(final_res1[15::])
-    smother = LineSmoother(tmp, iterations=5, values=[[20, 20], [10, 10], [5, 5], [4, 4], [6, 6]])
-    # tmp = smother.smooth_line()
-    # tmp2 = np.array(final_res4) / np.array(final_res3)
-    # smother2 = LineSmoother(tmp2, iterations=5, values=[[20, 20], [10, 10], [5, 5], [4, 4], [6, 6]])
-    # tmp2 = smother2.smooth_line()
-
-    plt.plot(tmp, color="r", linewidth=2)
-    # plt.plot(tmp2, linestyle="dotted", color="b", linewidth=2)
-    # plt.ylim(bottom=0.9)
-    # plt.ylim(top=1.075)
-    plt.axhline(y=1, color="k", linestyle="--")
-    plt.title("WPDDA vs PDDA")
-    plt.legend(["Only 1 Ads-Category Available", "All Ads-Categories Available"])
-    plt.ylabel("Cr(wpdda) / Cr(pdda)")
-    plt.xlabel("Number Of Allocations: Na")
-    plt.show()
-
 

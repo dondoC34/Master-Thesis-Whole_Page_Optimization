@@ -5,7 +5,15 @@ from tqdm import tqdm
 
 
 class PageCreator:
-    def __init__(self, attributes_1, attributes_2, real_slot_promenances, layout_slots, allocation_approach, categories):
+    def __init__(self, attributes_1, attributes_2, real_slot_promenances, allocation_approach, categories):
+        """
+        Create an Agent for each combination of user's feature in attribute_1 and attribute_2
+        :param attributes_1: 1D list of features
+        :param attributes_2: 1D list of features
+        :param real_slot_promenances: 1D list of float probabilitites
+        :param allocation_approach: The allocation approach used by the learners. "full", "LP", "alt_LP" or "standard"
+        :param categories: 1D list of strings, naming the categories handled by the Agents
+        """
         self.categories = categories
         self.real_slot_promenances = real_slot_promenances
         self.learners_list = []
@@ -24,7 +32,6 @@ class PageCreator:
             attribute_row = []
             for _ in attributes_2:
                 attribute_row.append(NewsLearner(real_slot_promenances=real_slot_promenances,
-                                                 layout_slots=layout_slots,
                                                  allocation_approach=allocation_approach,
                                                  categories=categories,
                                                  allocation_diversity_bounds=(0.4, 0.4, 0.4, 0.4, 0.4, 0.4),
@@ -32,6 +39,7 @@ class PageCreator:
                                                  ads_allocation=True,
                                                  ads_allocation_technique="res_LP",
                                                  ads_allocation_approach="wpdda",
+                                                 ads_real_slot_promenances=[0.9, 0.8]
                                                  ))
 
             self.learner_matrix.append(attribute_row.copy())
@@ -56,18 +64,33 @@ class PageCreator:
                 learner.fill_news_pool(pool, append=append)
 
     def read_all_ads_weighted_beta(self, folder):
-
+        """
+        For each Agent, read the w. beta matrices for advertising saved with the format returned by the save method
+        :param folder: the path of the files
+        :return: None
+        """
         for i in range(len(self.learner_matrix)):
             for j in range(len(self.learner_matrix[i])):
                 self.learner_matrix[i][j].read_ads_weighted_beta_matrix_from_file(desinence="_" + str(i)+"-"+str(j),
                                                                                   folder=folder)
 
     def fill_all_ads_pool(self, pool, append=False):
+        """
+        Fill the ads pool of each Agent
+        :param pool: 1D list of Ads object
+        :param append: Always True, the Agents share the same list of ads being part of the same web site
+        :return: None
+        """
         for learner_row in self.learner_matrix:
             for learner in learner_row:
                 learner.fill_ads_pool(pool, append=append)
 
     def refresh_all_ads_list(self, ads_list):
+        """
+        To be called after each update of the Ads Pool
+        :param ads_list: 1D list of Ads object that was used to update the ads pool
+        :return: Nothing
+        """
         for learner_row in self.learner_matrix:
             for learner in learner_row:
                 learner.refresh_ads_buffer(ads_list=ads_list)
@@ -76,12 +99,12 @@ class PageCreator:
         """
         Handles an user interaction. Basing on the user features, classifies the user and assign it to the corresponding
         learner in the learners matrix.
-        :param user: The user ifself.
+        :param user: User object. The user ifself.
         :return: Nothing
         """
         index_1 = self.attribute_1.index(user.genre)
         index_2 = self.attribute_2.index(user.age_slot)
-        self.learner_matrix[index_1][index_2].user_arrival(user=user, interest_decay=True, debug=debug)
+        self.learner_matrix[index_1][index_2].user_arrival(user=user, interest_decay=True)
         self.average_reward.append(self.learner_matrix[index_1][index_2].multiple_arms_avg_reward[-1])
         self.total_ads_clicks += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][0]
         self.total_ads_allocations += self.learner_matrix[index_1][index_2].total_ads_clicks_and_displays[-1][1]
@@ -98,14 +121,17 @@ if __name__ == "__main__":
     ads_pool = []
     user_genres = ["M", "F"]
     user_age = [j for j in range(10, 91)]
-
+    categories = ["cibo", "gossip", "politic", "scienza", "sport", "tech"]
     num_of_users = 1000
     num_of_news_per_category = 3
     num_of_ads_per_category = 1005
     num_of_interaction = 500
-
-    # USE WHICHEVER SLOT PROMENANCE VALUE, FEASIBLE OF COURSE (>0 AND <1)
-    real_slot_promenances = [0.9, 0.8, 0.7]
+    support_ads_list = []
+    ads_refill = False
+    click_result = []
+    ads_assign = []
+    site_avg_reward = []
+    real_slot_promenances = [0.9, 0.8, 0.7, 0.7, 0.9]
 
     for i in range(num_of_users):
         # FILL THE USER POOL
@@ -113,7 +139,7 @@ if __name__ == "__main__":
 
     k = 0
     # CREATE A BOUNCH OF NEWS
-    for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
+    for category in categories:
         for id in range(num_of_news_per_category):
             news_pool.append(News(news_id=k,
                                   news_name=category + "-" + str(id)))
@@ -121,40 +147,31 @@ if __name__ == "__main__":
 
     k = 0
     # CREATE A BOUNCH OF ADS
-    for category in ["sport"]:
+    for category in categories:
         for id in range(num_of_ads_per_category):
             ads_pool.append(Ad(k, category + "-" + str(id), np.random.choice([False])))
             k += 1
-    support_ads_list = []
-    ads_refill = False
 
-    # SELECT A RANDOM USER AND MAKE IT INTERACT WITH THE SITE. REPEAT FOR NUM_OF_INTERACTIONS TIMES.
-    debug = False
-    click_result = []
-    ads_assign = []
-    site_avg_reward = []
-    for w in tqdm(range(5000)):
+    # AVERAGE OVERALL 100 EXPERIMENTS
+    for w in tqdm(range(100)):
 
         site = PageCreator(attributes_1=["M", "F"],
                            attributes_2=["LOW", "MEDIUM", "HIGH"],
                            real_slot_promenances=real_slot_promenances,
-                           layout_slots=3,
                            allocation_approach="standard",
-                           categories=["cibo", "gossip", "politic", "scienza", "sport", "tech"])
+                           categories=categories)
 
         # FILL ALL THE NEWS POOLS
         site.fill_all_news_pool(news_pool)
         site.fill_all_ads_pool(ads_pool.copy())
-        site.read_all_ads_weighted_beta("Saved-Ads-W-Beta/")
         for user in user_pool:
             user.last_news_clicked.clear()
             user.last_news_in_allocation.clear()
             user.viewed_but_not_clicked_news.clear()
 
         for o in range(1, num_of_interaction):
-
             if ads_refill and ((o % 10) == 0):
-                for category in ["cibo", "gossip", "politic", "scienza", "sport", "tech"]:
+                for category in categories:
                     for id in range(5):
                         support_ads_list.append(Ad(k, category + "-" + str(id), np.random.choice([True, False])))
                         k += 1
@@ -162,40 +179,19 @@ if __name__ == "__main__":
                 site.refresh_all_ads_list(support_ads_list)
                 support_ads_list.clear()
 
+            # SELECT A RANDOM USER, THEN MAKE IT INTERACT WITH THE WEBSITE
             user = np.random.choice(user_pool)
             site.user_interaction(user=user)
 
+        # STORE THE RESULTS OF EACH EXPERIMENT
         click_result.append(site.fraction_of_ads_clicks)
         ads_assign.append(site.total_ads_assignment)
         site_avg_reward.append(site.average_reward)
 
-    # file = open("site-performances/site_avg_reward.txt", "w")
-    # site_avg_reward = np.mean(site_avg_reward, axis=0)
-    # file.write(str(site_avg_reward[0]))
-    # for i in range(1, len(site_avg_reward)):
-    #     file.write("," + str(site_avg_reward[i]))
-    # file.close()
-
-    result = []
-    for i in [2 * k for k in range(1, 1001)]:
-        tmp = []
-        for j in range(len(click_result)):
-            for m in range(len(click_result[j])):
-                if ads_assign[j][m] == i:
-                    if click_result[j][m] not in tmp:
-                        tmp.append(click_result[j][m])
-
-        if len(tmp) > 0:
-            result.append(np.mean(tmp))
-        else:
-            result.append(-1)
-
-    click_result = np.mean(result, axis=0)
-    print(ads_assign[0])
-    file = open("Ads-wpdda-perf/WPDDA.txt", "w")
-    file.write(str(result[0]))
-    for i in range(1, len(result)):
-        file.write("," + str(result[i]))
-    file.close()
+    plt.plot(np.mean(site_avg_reward, axis=0))
+    plt.title("Website expected reward")
+    plt.xlabel("Interaction")
+    plt.ylabel("Expected reward")
+    plt.show()
 
 

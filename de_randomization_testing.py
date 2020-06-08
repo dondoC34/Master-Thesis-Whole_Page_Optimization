@@ -89,36 +89,35 @@ if __name__ == "__main__":
     promenance_percentage_value = diversity_percentage_for_category / 100 * sum(real_slot_promenances)
     allocation_diversity_bounds = (promenance_percentage_value, promenance_percentage_value, promenance_percentage_value)
     iterations = 10000
-    user = SyntheticUser(23, "F", 80, "C")
+    user = SyntheticUser(23, "F", 80)
     user.user_quality_measure = [0.5, 0.6, 0.6, 0.45, 0.45, 0.4]
     news_per_category = len(real_slot_promenances)
-    learner_rand_1 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
+    learner_rand_1 = NewsLearner(categories=categories,
                                  real_slot_promenances=real_slot_promenances,
                                  allocation_approach="LP",
                                  lp_rand_technique="rand_1",
                                  allocation_diversity_bounds=allocation_diversity_bounds,
                                  ads_allocation=False)
 
-    learner_rand_2 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
+    learner_rand_2 = NewsLearner(categories=categories,
                                  real_slot_promenances=real_slot_promenances,
                                  allocation_approach="LP",
                                  lp_rand_technique="rand_2",
                                  allocation_diversity_bounds=allocation_diversity_bounds,
                                  ads_allocation=False)
 
-    learner_rand_3 = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
+    learner_rand_3 = NewsLearner(categories=categories,
                                  real_slot_promenances=real_slot_promenances,
                                  allocation_approach="LP",
                                  lp_rand_technique="rand_3",
                                  allocation_diversity_bounds=allocation_diversity_bounds,
                                  ads_allocation=False)
 
-    standard_learner = NewsLearner(categories=categories, layout_slots=len(real_slot_promenances),
+    standard_learner = NewsLearner(categories=categories,
                                    real_slot_promenances=real_slot_promenances,
                                    allocation_approach="standard",
                                    allocation_diversity_bounds=allocation_diversity_bounds,
                                    ads_allocation=False)
-
 
     # READ THE WEIGHTED BETA MATRIX FROM A FILE TO HAVE THE BETAS DISTRIBUTION BE DIFFERENT FROM JUST A UNIFORM
     learner_rand_1.read_weighted_beta_matrix_from_file(indexes=[(0, 0)], desinences=["1-2"], folder="Saved-News_W-Beta/")
@@ -305,8 +304,9 @@ if __name__ == "__main__":
             print("There is no enough evidence in the data to state that, for category " + categories[i] + ", the mean "
                   "is significantly less than " + str(
                   allocation_diversity_bounds[i]) + " with confidence 95%, for what"
-                                                 "conerns algorithm de_rand2.")
+                                                    "conerns algorithm de_rand2.")
 
+    # T-Test for the fulfillment in expectation of the diversity constraints
     for i in range(len(categories)):
         x = [y[i] for y in sample_rand_3]
         mean = np.mean(x)
