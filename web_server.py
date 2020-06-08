@@ -210,17 +210,17 @@ class RequestHandler(BaseHTTPRequestHandler):
         if self.path == "/":
             self.send_header("content-type", "text/html")
             self.end_headers()
-            response = encode_html("intro.html")
+            response = encode_html("HTML_Pages/intro.html")
             self.wfile.write(response)
         elif self.path.endswith("/instructions"):
             self.send_header("content-type", "text/html")
             self.end_headers()
-            response = encode_html("intro_instructions.html")
+            response = encode_html("HTML_Pages/intro_instructions.html")
             self.wfile.write(response)
         elif self.path.endswith("/credits"):
             self.send_header("content-type", "text/html")
             self.end_headers()
-            response = encode_html("credits.html")
+            response = encode_html("HTML_Pages/credits.html")
             self.wfile.write(response)
         elif self.path.endswith("/image"):
             image_path = self.path.split("/")
@@ -273,7 +273,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                 user_data[user_index][-3].append(extended_news_pool[i].copy())
 
             learners.append(NewsLearner(categories=categories,
-                                        layout_slots=len(real_slot_promenances),
                                         real_slot_promenances=real_slot_promenances,
                                         allocation_approach="LP",
                                         allocation_diversity_bounds=allocation_diversity_bounds,
@@ -298,7 +297,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 allocation[k] = np.random.choice(target_user_data[-2][cat_index])
                 target_user_data[-2][cat_index].remove(allocation[k])
             target_user_data[0].append(allocation.copy())
-            response = encode_news_page("news_page.html", user_key, allocation, 1)
+            response = encode_news_page("HTML_Pages/news_page.html", user_key, allocation, 1)
             self.wfile.write(response)
             user_data_lock.acquire()
             timestamps_lock.acquire()
@@ -353,11 +352,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                         allocation[k] = np.random.choice(target_user_data[-2][cat_index])
                         target_user_data[-2][cat_index].remove(allocation[k])
                     target_user_data[0].append(allocation.copy())
-                    response = encode_news_page("news_page.html", user_key, allocation, target_user_iterations + 1)
+                    response = encode_news_page("HTML_Pages/news_page.html", user_key, allocation, target_user_iterations + 1)
                     self.wfile.write(response)
                     self.logwriter.write_log(["Response sent to " + str(user_key)])
                 else:
-                    response = encode_form_page("form_page.html", user_key)
+                    response = encode_form_page("HTML_Pages/form_page.html", user_key)
                     self.wfile.write(response)
 
             except ValueError:
@@ -365,21 +364,21 @@ class RequestHandler(BaseHTTPRequestHandler):
                     user_data_lock.release()
                 if file_saving_lock.locked():
                     file_saving_lock.release()
-                response = encode_html("session_expired_page.html")
+                response = encode_html("HTML_Pages/session_expired_page.html")
                 self.wfile.write(response)
             except IndexError:
                 if user_data_lock.locked():
                     user_data_lock.release()
                 if file_saving_lock.locked():
                     file_saving_lock.release()
-                response = encode_html("zanero_page.html")
+                response = encode_html("HTML_Pages/zanero_page.html")
                 self.wfile.write(response)
 
         elif self.path.endswith("/end"):
             try:
                 self.send_header("content-type", "text/html")
                 self.end_headers()
-                response = encode_html("end_page.html")
+                response = encode_html("HTML_Pages/end_page.html")
                 self.wfile.write(response)
                 user_data_lock.acquire()
                 user_key = self.path.split("/")[1]
@@ -467,12 +466,12 @@ class RequestHandler(BaseHTTPRequestHandler):
                     user_data_lock.release()
                 if file_saving_lock.locked():
                     file_saving_lock.release()
-                response = encode_html("session_expired_page.html")
+                response = encode_html("HTML_Pages/session_expired_page.html")
                 self.wfile.write(response)
         elif self.path.endswith("/expired"):
             self.send_header("content-type", "text/html")
             self.end_headers()
-            response = encode_html("session_expired_page.html")
+            response = encode_html("HTML_Pages/session_expired_page.html")
             self.wfile.write(response)
         elif self.path.endswith("/statistics_hdjdidiennsjdiwkakosoeprpriufncnaggagwiwoqlwlenxbhcufie"):
             clicks, cats, times = extract_statistics()
@@ -486,7 +485,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.loggerBot.telegram_bot_sendtext("Bad Request From " + str(self.client_address[0]) + ": " + self.path)
                 self.send_header("content-type", "text/html")
                 self.end_headers()
-                response = encode_html("intro.html")
+                response = encode_html("HTML_Pages/intro.html")
                 self.wfile.write(response)
 
     def do_POST(self):

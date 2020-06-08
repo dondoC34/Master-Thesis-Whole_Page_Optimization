@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="shortcut icon" href="data:image/x-icon;" type="image/x-icon">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title>AI Article Recommendation</title>
+  </head>
+  <body>
+
+    <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
+  <a class="navbar-brand mb-0 h1">
+    AI Article Recommendation -  / 10</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+    </ul>
+    <button class="btn btn-outline-success my-2 my-sm-0" onclick=next()>Next</button>
+  </div>
+</nav>
+<br>
+<br>
+<br>
+
+<div class="container">
+  <div class="row">
+    <div class="col-sm-8 text-center">
+      <img id="0" style="border-color: black; cursor: pointer;" onmouseover=over(0) onmouseout=out(0) onclick=img_click(0) src="" alt="" height="200px" class="img-thumbnail">
+      <div class="short-div">
+        <div class="row">
+        <div class="col-4 text-center">
+          <img id="3" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(3) onmouseout=out(3) onclick=img_click(3) src="" alt="" height="200px" class="img-thumbnail">
+        </div>
+        <div class="col-4 text-center">
+          <img id="4" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(4) onmouseout=out(4) onclick=img_click(4) src="" alt="" height="200px" class="img-thumbnail">
+        </div>
+        <div class="col-4 text-center">
+          <img id="5" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(5) onmouseout=out(5) onclick=img_click(5) src="" alt="" height="200px" class="img-thumbnail">
+        </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-4 text-center" style="padding:0px">
+      <div class="short-div">
+        <img id="1" style="border-color: black; cursor: pointer;" onmouseover=over(1) onmouseout=out(1) onclick=img_click(1) src="" alt="" height="200px" class="img-thumbnail">
+      </div>
+      <div class="short-div">
+        <img id="2" vspace="15px" style="border-color: black; cursor: pointer;" onmouseover=over(2) onmouseout=out(2) onclick=img_click(2) src="" alt="" height="200px" class="img-thumbnail">
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-4 col-xs-6 text-center">
+      <img id="6" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(6) onmouseout=out(6) onclick=img_click(6) src="" alt="" height="200px" class="img-thumbnail">
+    </div>
+    <div class="col-sm-4 col-xs-6 text-center">
+      <img id="7" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(7) onmouseout=out(7) onclick=img_click(7) src="" alt="" height="200px" class="img-thumbnail">
+    </div>
+    <div class="col-sm-4 text-center">
+      <img id="8" vspace="5px" style="border-color: black; cursor: pointer;" onmouseover=over(8) onmouseout=out(8) onclick=img_click(8) src="" alt="" height="200px" class="img-thumbnail">
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-3 col-xs-6 text-center">
+      <img id="9" style="border-color: black; cursor: pointer;" onmouseover=over(9) onmouseout=out(9) onclick=img_click(9) src="" alt="" height="200px" class="img-thumbnail">
+    </div>
+    <div class="col-sm-3 col-xs-6 text-center">
+      <img id="10" style="border-color: black; cursor: pointer;" onmouseover=over(10) onmouseout=out(10) onclick=img_click(10) src="" alt="" height="200px" class="img-thumbnail">
+    </div>
+    <div class="col-sm-3 text-center">
+      <img id="11" style="border-color: black; cursor: pointer;" onmouseover=over(11) onmouseout=out(11) onclick=img_click(11) src="" alt="" height="200px" class="img-thumbnail">
+    </div>
+    <div class="col-sm-3 text-center">
+      <img id="12" style="border-color: black; cursor: pointer;" onmouseover=over(12) onmouseout=out(12) onclick=img_click(12) src="" alt="" height="200px" class="img-thumbnail">
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+  var user_id =  ;
+  var clicked = [false, false, false, false, false, false, false, false, false, false, false, false, false];
+  var img_names =  ;
+  var init_page_time = new Date().getTime();
+  var init_image_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  var image_inspection_time = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  var next_clicked = false;
+
+
+  function img_click(slot_nr){
+    var elem = document.getElementById(String(slot_nr));
+    if (clicked[slot_nr] == false){
+      elem.style.background = "#28a745";
+      clicked[slot_nr] = true;
+    }
+    else {
+      elem.style.background = "#919191";
+      clicked[slot_nr] = false;
+    }
+  }
+
+  function over(id){
+    if (clicked[id] == false){
+      var elem = document.getElementById(String(id));
+      elem.style.background = "#919191";
+      init_image_time[id] = new Date().getTime();
+    }
+  }
+
+  function out(id){
+    var current_time = new Date().getTime();
+    if (clicked[id] == false){
+      var elem = document.getElementById(String(id));
+      elem.style.background = "white";
+    }
+    image_inspection_time[id] = image_inspection_time[id] + (current_time - init_image_time[id]);
+  }
+
+  var page_location = String(window.location);
+  var index = page_location.indexOf("/", 7);
+  var server_location = page_location.slice(0, index + 1);
+
+  function next(){
+    if (next_clicked == false){
+      next_clicked = true;
+      var current_time = new Date().getTime();
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+        if (this.responseText == "expired"){
+          window.location = server_location + "expired";
+        }
+        else {
+          window.location = server_location + this.responseText + "/next";
+        }
+      }
+      };
+      xhr.open("POST", server_location, false);
+      var to_send = {type:"data", id: user_id, clicked: clicked, inspection_time: current_time - init_page_time, image_inspection_times: image_inspection_time};
+      to_send = JSON.stringify(to_send);
+      xhr.send(to_send);
+    }
+  }
+
+
+  for(i = 0;i < 13; i++){
+    var image = document.getElementById(String(i));
+    image.src = server_location + "News-AdsApp-Copia/" + img_names[i] + ".GIF/image";
+  }
+
+</script>
+
+<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+</body>
+</html>
