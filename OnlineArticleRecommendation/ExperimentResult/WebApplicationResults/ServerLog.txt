@@ -1,0 +1,14 @@
+18,20,58: Thread-5 - user 47i9u6qykpge35ya joined.
+18,20,58: Thread-5 - active users: ['47i9u6qykpge35ya']
+18,20,58: Thread-5 - current user index: 0
+18,20,58: Thread-5 - About to delete users: []
+18,20,58: Thread-5 - Active Users: ['47i9u6qykpge35ya']
+18,20,59: Thread-5 - Active Users: ['47i9u6qykpge35ya']
+18,21,04: Thread-19 - Received user data of 47i9u6qykpge35ya with index 0
+18,21,04: Thread-19 - Currently active users: ['47i9u6qykpge35ya']
+18,21,04: Thread-19 - Saved data of user 47i9u6qykpge35ya
+18,21,04: Thread-19 - Response sent to 47i9u6qykpge35ya
+18,21,04: Thread-19 - Active users: ['47i9u6qykpge35ya']
+18,21,04: Thread-20 - User 47i9u6qykpge35yaof index: 0 complete page number 1
+18,21,04: Thread-20 - Active users: ['47i9u6qykpge35ya']
+18,21,04: Thread-20 - Response sent to 47i9u6qykpge35ya
