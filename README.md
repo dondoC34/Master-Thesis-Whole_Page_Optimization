@@ -1,8 +1,8 @@
 # Master-Thesis-Whole_Page_Optimization
-This repository constains my master thesis project concerning Whole-Page Optimization. The key idea id the automatic generation of newspapers' webpages 
-through a combinatorial semi-bandit approach.  
-news_learner.py includes the core of the project. It is already provided a main section in which a simple example of how to use my Agent is present.  
-web_server.py implements a simple webserver hosting my Agent as well as a set of images, used to simulated a real newspaper website i adopted to collect real world data.  
+This repository contains my master thesis project concerning Whole-Page Optimization. The key idea id the automatic generation of newspapers' webpages 
+through a combinatorial semi-bandit approach, learning users' interests in an online fashion.  
+*news_learner.py* includes the core of the project and constitutes the Agent which recommends and allocates optimized web pages.  
+*web_server.py* implements a simple webserver hosting my Agent as well as a set of images, used to simulated a real newspaper website i adopted to collect real world data.  
 The rest of the files include saved data from offline evaluation sections, html pages for the WebServer and support python file used to properly implement the Agent.
 
 # Minimal Working Example for Simulated Experimentation
