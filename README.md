@@ -7,7 +7,7 @@ The rest of the files include saved data from offline evaluation sections, html 
 
 # Minimal Working Example for Offline Experimentation
 
-python"""
+```python
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -62,4 +62,4 @@ plt.plot(np.mean(expected_reward, axis=0))
 plt.title("Expected Reward")
 plt.xlabel("Interaction")
 plt.show()
-"""
+```
