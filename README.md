@@ -6,6 +6,7 @@ web_server.py implements a simple webserver hosting my Agent as well as a set of
 The rest of the files include saved data from offline evaluation sections, html pages for the WebServer and support python file used to properly implement the Agent.
 
 # Minimal Working Example for Offline Experimentation
+With few lines of code we can set up a simple Agent for article recommendation. 
 
 ```python
 from tqdm import tqdm
@@ -36,8 +37,8 @@ for category in categories:
 # AVERAGE OVER 10 EXPERIMENTS
 for k in tqdm(range(10)):
     # We create a user and set their quality metrics that we want to estimate
-    u = SyntheticUser(id=23,
-                      gender="M",
+    u = SyntheticUser(user_id=23,
+                      genre="M",
                       age=27)  # A male 27 years old user
     # We manually set its parameters, even if it is not needed
     u.user_quality_measure = [0.3, 0.65, 0.35, 0.3, 0.2, 0.1]
