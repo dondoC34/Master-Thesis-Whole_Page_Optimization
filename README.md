@@ -36,7 +36,9 @@ for category in categories:
 # AVERAGE OVER 10 EXPERIMENTS
 for k in tqdm(range(10)):
     # We create a user and set their quality metrics that we want to estimate
-    u = SyntheticUser(23, "M", 27)  # A male 27 years old user
+    u = SyntheticUser(id=23,
+                      gender="M",
+                      age=27)  # A male 27 years old user
     # We manually set its parameters, even if it is not needed
     u.user_quality_measure = [0.3, 0.65, 0.35, 0.3, 0.2, 0.1]
     agent = NewsLearner(categories=categories,
@@ -45,8 +47,8 @@ for k in tqdm(range(10)):
                         ads_allocation=False,
                         allocation_diversity_bounds=allocation_diversity_bounds)
 
-    agent.fill_news_pool(news_list=news_pool, append=True)
-    # We simulate 300 interactions for this user
+    agent.fill_news_pool(news_list=news_pool, append=True) #  Fill the Articles' bucket of the Agent
+    # We simulate 100 interactions for this user
     for i in range(100):
         agent.user_arrival(u, interest_decay=False)  # Assume that user's interests do not vary over time
 
